@@ -5,25 +5,26 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF.svg?logo=kotlin)]()
 [![Compose](https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4.svg?logo=jetpackcompose)]()
 
-Aplikasi manajemen pemeliharaan kendaraan Android modern bergaya **Bento Grid** premium. Didesain secara spesifik untuk memantau status perawatan, melacak biaya, dan mengingatkan jadwal jatuh tempo pajak STNK secara cerdas. 
+Aplikasi manajemen perawatan kendaraan Android modern dengan desain **Bento Grid** premium. Didesain secara spesifik untuk memantau status servis secara presisi berdasarkan subtipe mesin, melacak pengeluaran biaya, serta mengingatkan pajak STNK secara cerdas dan tepat waktu.
 
 ---
 
 ## 🎨 Premium Bento Grid Design System
 
-Aplikasi ini menggunakan filosofi **Bento Grid Layout** asimetris, melangkah jauh dari tata letak tabel konvensional yang kaku menuju antarmuka dinamis dan interaktif.
+Aplikasi ini mengadopsi filosofi antarmuka **Bento Grid Layout** asimetris, menggabungkan metrik visual ke dalam susunan grid yang rapi, adaptif, dan responsif:
 
-*   **Welcome Dashboard Bento**: Kartu sambutan dinamis berbasis waktu (*time-sensitive greeting*) terintegrasi dengan ringkasan garasi (*Garage Inventory*) dan indikator alarm pajak STNK.
-*   **Staggered Vehicle Grid**: Tata letak asimetris dinamis yang menyajikan daftar kendaraan secara bergantian antara kartu lebar penuh (*Full Width*) dan kartu ganda bersisian (*2-Column Grid*) untuk kontras estetika visual.
-*   **Vehicle Metrics Bento**: Grid asimetris berdasar bobot visual pada halaman detail kendaraan yang menyatukan:
-    *   **Odometer Block**: Dilengkapi dengan visual progress bar linear yang menunjukkan seberapa dekat kendaraan Anda dengan batas servis terdekat.
-    *   **Tax Countdown Block**: Indikator hitung mundur pajak STNK dengan warna kartu adaptif berbasis status urgensi (Merah/Kuning/Hijau).
-    *   **Expenses Block**: Akumulasi biaya perawatan real-time dalam visualisasi nominal Rupiah format besar dengan ikon dompet.
-    *   **Specifications Block**: Ringkasan CC mesin, plat nomor, tahun pembuatan, dan tipe kendaraan.
+*   **Welcome Dashboard Bento**: Menyajikan salam dinamis berbasis waktu (*time-sensitive greeting*), ringkasan kepemilikan garasi (*Garage Inventory*), serta counter peringatan pajak STNK dalam micro-cards.
+*   **Staggered Vehicle Grid**: Kartu kendaraan pada dashboard disusun asimetris, bergantian antara kartu lebar penuh (*Full Width*) dan kartu ganda bersisian (*2-Column Grid*) untuk memberikan dinamisme visual.
+*   **Vehicle Metrics Bento Dashboard**: Halaman detail kendaraan menyatukan informasi penting dalam layout bento asimetris:
+    *   **Odometer Block**: Dilengkapi dengan visual progress bar linear yang menunjukkan seberapa dekat jarak tempuh dengan batas servis terdekat.
+    *   **Tax Countdown Block**: Indikator hitung mundur pajak STNK dengan transisi warna latar belakang adaptif sesuai urgensi (Merah/Kuning/Hijau).
+    *   **Expenses Block**: Akumulasi total pengeluaran perawatan dalam visualisasi nominal Rupiah format besar dengan ikon dompet.
+    *   **Specifications Block**: Detail spesifikasi teknis seperti merek, model, CC mesin, plat nomor, tahun pembuatan, dan subtipe mesin kendaraan.
 *   **Custom Geometric Typography**: Tipografi premium **Outfit** terintegrasi secara luring (*offline*) di dalam aset lokal untuk menjamin visual yang elegan, bersih, dan konsisten di seluruh versi OS Android.
-*   **Harmonious Color Palette**:
+*   **Aesthetic Palette Colors**:
     *   **Mode Terang**: Latar belakang Slate-50 dengan aksen Charcoal/Slate-900 yang modern dan tegas.
-    *   **Mode Gelap**: Latar belakang Navy-Black deep yang nyaman untuk keterbacaan malam hari dengan kontras kartu Navy-Slate yang halus.
+    *   **Mode Gelap**: Latar belakang Navy-Black deep yang nyaman dengan kontras permukaan kartu Navy-Slate yang halus.
+*   **Launcher Icon Premium**: Ikon aplikasi kustom yang elegan dengan simbol **Kunci Pas (Wrench)** putih bersilang dengan **Roda Gigi (Gear)** biru langit di atas latar belakang Navy Slate berpola grid halus, menggantikan robot hijau bawaan standar.
 
 ---
 
@@ -31,12 +32,24 @@ Aplikasi ini menggunakan filosofi **Bento Grid Layout** asimetris, melangkah jau
 
 Aplikasi ini dibangun dengan mengedepankan akurasi matematika kalkulasi dan keandalan fungsionalitas:
 
-1.  **Pencatatan Riwayat Servis Komprehensif**: Mencatat lokasi bengkel, jenis servis, jarak tempuh (odometer), catatan khusus, dan biaya secara terorganisasi.
-2.  **Odometer Baseline Tracking (`startingMileage`)**: Menghindari *bug* target yang bergeser dinamis. Aplikasi mengunci odometer awal saat kendaraan didaftarkan sebagai baseline statis, sehingga sisa kilometer ke target berikutnya berkurang secara linear saat odometer kendaraan naik.
-3.  **Visual Overdue Warnings**: Menampilkan peringatan keterlambatan (kilometer minus) dengan progress bar bertransisi warna merah (*error container*) sebagai penunjuk tingkat urgensi tertinggi.
-4.  **Timezone-Neutral Tax Countdown**: Perhitungan hari sisa jatuh tempo pajak menggunakan normalisasi Calendar ke waktu tengah malam (*midnight*), mencegah perubahan angka sisa hari secara acak yang disebabkan oleh pergeseran jam atau offset timezone.
-5.  **Daily Background Work Scheduler**: Menggunakan **WorkManager** Android untuk menjalankan pengecekan background berkala 24 jam sekali guna mendeteksi dan memicu notifikasi pengingat pajak STNK (≤ 30 hari) dan batas servis (≤ 200 KM).
-6.  **Digital Service Book Export**: Fitur ekspor terintegrasi melalui Share Intent native Android untuk membagikan buku riwayat servis kendaraan terformat rapi dalam bentuk teks ke WhatsApp, Email, atau aplikasi chat lainnya.
+### 1. Klasifikasi Subtipe & Template Servis Bawaan (Default Config Templates)
+Sistem membedakan jenis servis default secara otomatis saat kendaraan didaftarkan untuk memastikan efisiensi dan relevansi perawatan:
+*   **Motor Matic**: Oli Mesin, Oli Gardan, V-Belt (CVT), Kampas Rem, Busi, Filter Udara, Air Radiator, Minyak Rem.
+*   **Motor Gigi (Semi-Automatic)**: Oli Mesin, Rantai & Gear, Kampas Rem, Busi, Filter Udara, Air Radiator, Minyak Rem.
+*   **Motor Kopling (Manual)**: Oli Mesin, Kampas Kopling, Rantai & Gear, Kampas Rem, Busi, Filter Udara, Air Radiator, Minyak Rem.
+*   **Motor Listrik (EV)**: Drive Belt/Rantai, Oli Gearbox EV, Kampas Rem, Minyak Rem, Cek Kesehatan Baterai (SOH).
+*   **Mobil Bensin / Diesel**: Oli Mesin, Filter Oli, Filter Udara, Timing Belt, Kampas Rem, Rotasi Ban, Oli Transmisi, Minyak Rem, Air Radiator, Servis AC, Busi.
+*   **Mobil Hybrid**: Oli Mesin, Filter Oli, Filter Udara, Kampas Rem (Regeneratif - lebih awet), Rotasi Ban, Air Radiator, Servis AC, Cek Sistem & Baterai Hybrid, Busi.
+*   **Mobil Listrik (EV)**: Filter AC Kabin, Cairan Gearbox EV, Kampas Rem (Regeneratif - sangat awet), Cek Kesehatan Baterai (SOH), Cairan Pendingin Baterai, Rotasi Ban, Servis AC.
+
+### 2. Smart Input Forms & Odometer O Safeguard
+*   **Penyembunyian Field Dinamis**: Kolom input **Batas Interval Ganti Oli (KM)** disembunyikan secara otomatis ketika subtipe **Listrik (EV)** dipilih pada formulir tambah/edit kendaraan. Kolom input V-Belt/Timing Belt juga disembunyikan untuk Mobil Listrik karena tidak memiliki timing belt.
+*   **Abaikan Interval 0 KM**: Sistem secara cerdas menyaring konfigurasi dengan `intervalKm <= 0` pada sisa target servis di UI maupun background. Odometer bernilai **0 KM** tidak lagi memicu kesalahan logika atau peringatan "Terlewat 0 KM" untuk item yang dinonaktifkan.
+*   **Odometer Baseline Tracking (`startingMileage`)**: Mengunci odometer awal saat kendaraan didaftarkan sebagai baseline statis, sehingga sisa kilometer ke target berikutnya berkurang secara linear saat odometer kendaraan naik tanpa terjadi pergeseran target dinamis.
+
+### 3. Background Processing & Digital Book Export
+*   **Daily Background Work Scheduler**: Menggunakan **WorkManager** Android untuk menjalankan pengecekan background berkala 24 jam sekali guna mendeteksi dan memicu notifikasi pengingat pajak STNK (≤ 30 hari) dan batas servis (≤ 200 KM).
+*   **Digital Service Book Export**: Fitur ekspor terintegrasi melalui Share Intent native Android untuk membagikan buku riwayat servis kendaraan terformat rapi dalam bentuk teks ke WhatsApp, Email, atau aplikasi chat lainnya.
 
 ---
 
@@ -52,10 +65,10 @@ Aplikasi ini dibangun dengan mengedepankan akurasi matematika kalkulasi dan kean
 ## 📁 Struktur Berkas Penting
 
 *   **Data Layer**:
-    *   [Models.kt](file:///c:/Users/tamav/Desktop/PROYEK/Servis_Reminder/app/src/main/java/com/example/data/Models.kt) - Entitas Room Database (`Vehicle`, `ServiceRecord`, `VehicleServiceConfig`).
+    *   [Models.kt](file:///c:/Users/tamav/Desktop/PROYEK/Servis_Reminder/app/src/main/java/com/example/data/Models.kt) - Entitas Room Database (`Vehicle`, `ServiceRecord`, `VehicleServiceConfig`) lengkap dengan kolom `subType`.
     *   [Daos.kt](file:///c:/Users/tamav/Desktop/PROYEK/Servis_Reminder/app/src/main/java/com/example/data/Daos.kt) - Akses Query Database (`VehicleDao`, `ServiceDao`).
 *   **UI Layer**:
-    *   [Screens.kt](file:///c:/Users/tamav/Desktop/PROYEK/Servis_Reminder/app/src/main/java/com/example/ui/screens/Screens.kt) - Berisi komponen UI Bento Grid (`DashboardScreen`, `VehicleDetailScreen`, `AddVehicleScreen`, `AddServiceScreen`, `EditVehicleScreen`).
+    *   [Screens.kt](file:///c:/Users/tamav/Desktop/PROYEK/Servis_Reminder/app/src/main/java/com/example/ui/screens/Screens.kt) - Halaman UI Bento Grid (`DashboardScreen`, `VehicleDetailScreen`, `AddVehicleScreen`, `AddServiceScreen`, `EditVehicleScreen`).
     *   [Color.kt](file:///c:/Users/tamav/Desktop/PROYEK/Servis_Reminder/app/src/main/java/com/example/ui/theme/Color.kt) - Token warna premium Slate & Navy.
     *   [Type.kt](file:///c:/Users/tamav/Desktop/PROYEK/Servis_Reminder/app/src/main/java/com/example/ui/theme/Type.kt) - Integrasi dan skala tipografi font **Outfit**.
 *   **Business Logic Layer**:
@@ -66,24 +79,33 @@ Aplikasi ini dibangun dengan mengedepankan akurasi matematika kalkulasi dan kean
 
 ## 🚀 Panduan Build & Pengujian APK
 
-### Prasyarat
-*   **Android Studio** Koala / Ladybug atau versi terbaru.
-*   **Android SDK** 24 s.d. 36.
+Proyek telah dilengkapi dengan Gradle wrapper resmi (`gradlew` dan `gradlew.bat`) di root direktori. Jalankan perintah di direktori utama menggunakan terminal Anda:
 
-### Langkah Build Melalui Gradle Command
+### A. Menggunakan PowerShell (Rekomendasi)
+```powershell
+# Jalankan kompilasi APK Debug
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; .\gradlew assembleDebug
 
-Proyek dikonfigurasi untuk ditandatangani otomatis menggunakan kunci debug lokal yang sudah disediakan. Jalankan perintah di direktori utama:
+# Jalankan kompilasi APK Release (R8/ProGuard Shrunk)
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; .\gradlew assembleRelease
+```
 
-*   **Build Versi Debug**:
-    ```bash
-    .\gradlew assembleDebug
-    ```
-    *Output APK:* `app/build/outputs/apk/debug/app-debug.apk`
-*   **Build Versi Release (R8/ProGuard Shrunk - 12.7 MB)**:
-    ```bash
-    .\gradlew assembleRelease
-    ```
-    *Output APK:* `app/build/outputs/apk/release/app-release.apk`
+### B. Menggunakan Command Prompt (CMD)
+```cmd
+# Jalankan kompilasi APK Debug
+set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+gradlew assembleDebug
+
+# Jalankan kompilasi APK Release (R8/ProGuard Shrunk)
+set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+gradlew assembleRelease
+```
+
+### Jalur Output Berkas APK:
+*   **Debug APK**: [app-debug.apk](file:///c:/Users/tamav/Desktop/PROYEK/Servis_Reminder/app/build/outputs/apk/debug/app-debug.apk) (Sekitar 19 MB)
+*   **Release APK**: [app-release.apk](file:///c:/Users/tamav/Desktop/PROYEK/Servis_Reminder/app/build/outputs/apk/release/app-release.apk) (Hanya 12.7 MB - Teroptimasi & Mengecil berkat R8/ProGuard!)
 
 ### Pemasangan Instan ke Emulator (Virtual Device)
-Cukup buka folder output hasil build di atas menggunakan Windows File Explorer, lalu **seret dan lepas (drag-and-drop)** file `.apk` ke atas layar Emulator yang sedang aktif. Aplikasi **Servis Reminder** akan langsung terpasang dan siap digunakan.
+1. Buka folder output berkas APK di atas melalui Windows File Explorer.
+2. **Seret dan lepas (drag-and-drop)** berkas `app-debug.apk` atau `app-release.apk` langsung ke atas layar Emulator yang sedang aktif.
+3. Aplikasi **Servis Reminder** dengan ikon kustom premium akan terpasang secara instan dan siap dijalankan.
