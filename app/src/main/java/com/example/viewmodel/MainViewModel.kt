@@ -155,6 +155,11 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             repository.deleteServiceRecord(record)
         }
     }
+
+    fun triggerOneTimeReminderCheck(context: android.content.Context) {
+        val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.worker.ReminderWorker>().build()
+        androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
+    }
 }
 
 class MainViewModelFactory(private val repository: AppRepository) : ViewModelProvider.Factory {

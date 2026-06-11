@@ -16,6 +16,9 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,11 +28,40 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.viewmodel.MainViewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
     val vehicles by viewModel.allVehicles.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    var hasNotificationPermission by remember {
+        mutableStateOf(
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            hasNotificationPermission = isGranted
+        }
+    )
+
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -38,7 +70,18 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground
-                )
+                ),
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.triggerOneTimeReminderCheck(context) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Uji Notifikasi",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -53,49 +96,95 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
             }
         }
     ) { padding ->
-        if (vehicles.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Belum ada kendaraan. Tambahkan sekarang!", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(), 
-                contentPadding = PaddingValues(16.dp), 
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(vehicles) { vehicle ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { navController.navigate("vehicle_detail/${vehicle.id}") },
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            // Banner Peringatan Izin Notifikasi
+            if (!hasNotificationPermission && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clickable {
+                            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        },
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = if (vehicle.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
-                                    contentDescription = vehicle.type,
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text(vehicle.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                
-                                val detailParts = listOf(vehicle.brand, vehicle.model, vehicle.plateNumber).filter { it.isNotBlank() }
-                                if (detailParts.isNotEmpty()) {
-                                    Text(detailParts.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                        Icon(
+                            imageVector = Icons.Default.NotificationsOff,
+                            contentDescription = "Peringatan",
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "Izin Notifikasi Dimatikan",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "Ketuk untuk mengaktifkan kembali agar pengingat servis berfungsi.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (vehicles.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Belum ada kendaraan. Tambahkan sekarang!", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(), 
+                    contentPadding = PaddingValues(16.dp), 
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(vehicles) { vehicle ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate("vehicle_detail/${vehicle.id}") },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (vehicle.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
+                                        contentDescription = vehicle.type,
+                                        tint = MaterialTheme.colorScheme.onPrimary
+                                    )
                                 }
-                                
-                                Text("Jarak Tempuh: ${vehicle.currentMileage} KM", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text(vehicle.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    
+                                    val detailParts = listOf(vehicle.brand, vehicle.model, vehicle.plateNumber).filter { it.isNotBlank() }
+                                    if (detailParts.isNotEmpty()) {
+                                        Text(detailParts.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                                    }
+                                    
+                                    Text("Jarak Tempuh: ${vehicle.currentMileage} KM", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+                                }
                             }
                         }
                     }
@@ -214,12 +303,14 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
                     value = taxDateText,
                     onValueChange = {},
                     label = { Text("Jatuh Tempo Pajak STNK") },
+                    trailingIcon = { Icon(Icons.Default.DateRange, contentDescription = "Pilih Tanggal", tint = MaterialTheme.colorScheme.primary) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = false,
                     colors = OutlinedTextFieldDefaults.colors(
                         disabledTextColor = MaterialTheme.colorScheme.onSurface,
                         disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.primary
                     )
                 )
                 Box(
@@ -547,6 +638,21 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    val editCostDouble = editServiceCost.toDoubleOrNull()
+                    if (editCostDouble != null && editCostDouble > 0) {
+                        val decFormat = java.text.DecimalFormat("#,###")
+                        val symbols = java.text.DecimalFormatSymbols(java.util.Locale("in", "ID"))
+                        symbols.groupingSeparator = '.'
+                        decFormat.decimalFormatSymbols = symbols
+                        val formattedCost = "Rp " + decFormat.format(editCostDouble)
+                        Text(
+                            text = formattedCost,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                        )
+                    }
 
                     OutlinedTextField(
                         value = editServiceNotes,
@@ -736,7 +842,19 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(modifier = Modifier.padding(12.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                            Text("Jatuh Tempo Pajak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Jatuh Tempo Pajak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Pilih Tanggal Pajak",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                             Column {
                                 if (vehicle!!.taxDueDateMs > 0L) {
                                     val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
@@ -850,12 +968,17 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                 ) {
                     Text(
                         "Konfigurasi Pengingat",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    TextButton(onClick = { showAddConfigDialog = true }) {
-                        Text("Tambah Baru")
+                    TextButton(
+                        onClick = { showAddConfigDialog = true },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Tambah")
                     }
                 }
             }
@@ -890,13 +1013,75 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
 
             // Section: Riwayat Servis
             item {
-                Text(
-                    "Riwayat Servis",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Riwayat Servis",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    TextButton(
+                        onClick = {
+                            val decFormat = java.text.DecimalFormat("#,###")
+                            val symbols = java.text.DecimalFormatSymbols(java.util.Locale("in", "ID"))
+                            symbols.groupingSeparator = '.'
+                            decFormat.decimalFormatSymbols = symbols
+                            val totalCostText = "Rp " + decFormat.format(totalExpense)
+
+                            val sb = StringBuilder()
+                            sb.append("==================================\n")
+                            sb.append("      BUKU SERVIS DIGITAL\n")
+                            sb.append("==================================\n")
+                            sb.append("Kendaraan   : ${vehicle!!.name}")
+                            if (vehicle!!.brand.isNotBlank() || vehicle!!.model.isNotBlank()) {
+                                sb.append(" (${vehicle!!.brand} ${vehicle!!.model})")
+                            }
+                            sb.append("\n")
+                            if (vehicle!!.plateNumber.isNotBlank()) {
+                                sb.append("Plat Nomor  : ${vehicle!!.plateNumber}\n")
+                            }
+                            sb.append("Odometer    : ${vehicle!!.currentMileage} KM\n")
+                            sb.append("Total Biaya : $totalCostText\n")
+                            sb.append("----------------------------------\n\n")
+                            sb.append("DAFTAR RIWAYAT SERVIS:\n\n")
+
+                            if (services.isEmpty()) {
+                                sb.append("(Belum ada riwayat servis)\n")
+                            } else {
+                                services.forEachIndexed { index, record ->
+                                    val dateText = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(record.dateMs))
+                                    val recordCost = "Rp " + decFormat.format(record.cost)
+                                    sb.append("${index + 1}. ${record.serviceType}\n")
+                                    sb.append("   Tanggal  : $dateText\n")
+                                    sb.append("   Tempat   : ${record.title}\n")
+                                    sb.append("   Odometer : ${record.mileageAtService} KM\n")
+                                    if (record.cost > 0) {
+                                        sb.append("   Biaya    : $recordCost\n")
+                                    }
+                                    if (record.notes.isNotBlank()) {
+                                        sb.append("   Catatan  : ${record.notes}\n")
+                                    }
+                                    sb.append("\n")
+                                }
+                            }
+                            sb.append("----------------------------------\n")
+                            sb.append("Laporan dibuat otomatis menggunakan aplikasi Servis Reminder.")
+
+                            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Buku Servis Digital - ${vehicle!!.name}")
+                                putExtra(android.content.Intent.EXTRA_TEXT, sb.toString())
+                            }
+                            context.startActivity(android.content.Intent.createChooser(shareIntent, "Bagikan Buku Servis"))
+                        }
+                    ) {
+                        Text("Ekspor")
+                    }
+                }
             }
 
             if (services.isEmpty()) {
@@ -1072,6 +1257,21 @@ fun AddServiceScreen(navController: NavController, viewModel: MainViewModel, veh
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+            val costDouble = costStr.toDoubleOrNull()
+            if (costDouble != null && costDouble > 0) {
+                val decFormat = java.text.DecimalFormat("#,###")
+                val symbols = java.text.DecimalFormatSymbols(java.util.Locale("in", "ID"))
+                symbols.groupingSeparator = '.'
+                decFormat.decimalFormatSymbols = symbols
+                val formattedCost = "Rp " + decFormat.format(costDouble)
+                Text(
+                    text = formattedCost,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                )
+            }
 
             OutlinedTextField(
                 value = notes,
@@ -1222,12 +1422,14 @@ fun EditVehicleScreen(navController: NavController, viewModel: MainViewModel, ve
                     value = taxDateText,
                     onValueChange = {},
                     label = { Text("Jatuh Tempo Pajak STNK") },
+                    trailingIcon = { Icon(Icons.Default.DateRange, contentDescription = "Pilih Tanggal", tint = MaterialTheme.colorScheme.primary) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = false,
                     colors = OutlinedTextFieldDefaults.colors(
                         disabledTextColor = MaterialTheme.colorScheme.onSurface,
                         disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.primary
                     )
                 )
                 Box(

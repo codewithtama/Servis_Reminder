@@ -14,9 +14,15 @@ import com.example.ui.screens.AddServiceScreen
 import com.example.ui.screens.AddVehicleScreen
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.VehicleDetailScreen
+import com.example.ui.screens.EditVehicleScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.MainViewModel
 import com.example.viewmodel.MainViewModelFactory
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.worker.ReminderWorker
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,6 +31,16 @@ class MainActivity : ComponentActivity() {
         val database = AppDatabase.getDatabase(this)
         val repository = AppRepository(database.vehicleDao(), database.serviceDao(), database.serviceConfigDao())
         val factory = MainViewModelFactory(repository)
+
+        // Schedule periodic reminder check every 24 hours
+        val reminderWorkRequest = PeriodicWorkRequestBuilder<ReminderWorker>(24, TimeUnit.HOURS)
+            .setInitialDelay(1, TimeUnit.HOURS) // Avoid running immediately on fresh launch
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "ServisReminderWork",
+            ExistingPeriodicWorkPolicy.KEEP,
+            reminderWorkRequest
+        )
 
         enableEdgeToEdge()
         setContent {
