@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         val database = AppDatabase.getDatabase(this)
-        val repository = AppRepository(database.vehicleDao(), database.serviceDao())
+        val repository = AppRepository(database.vehicleDao(), database.serviceDao(), database.serviceConfigDao())
         val factory = MainViewModelFactory(repository)
 
         enableEdgeToEdge()
@@ -43,6 +43,12 @@ class MainActivity : ComponentActivity() {
                         val vehicleId = backStackEntry.arguments?.getString("vehicleId")?.toIntOrNull()
                         if (vehicleId != null) {
                             VehicleDetailScreen(navController, viewModel, vehicleId)
+                        }
+                    }
+                    composable("edit_vehicle/{vehicleId}") { backStackEntry ->
+                        val vehicleId = backStackEntry.arguments?.getString("vehicleId")?.toIntOrNull()
+                        if (vehicleId != null) {
+                            EditVehicleScreen(navController, viewModel, vehicleId)
                         }
                     }
                     composable("add_service/{vehicleId}") { backStackEntry ->

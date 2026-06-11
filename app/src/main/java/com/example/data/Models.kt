@@ -15,8 +15,25 @@ data class Vehicle(
     val engineType: String = "",
     val type: String, // "MOTOR" or "MOBIL"
     val currentMileage: Int,
-    val oilIntervalKm: Int = if (type == "MOTOR") 2000 else 5000,
-    val beltIntervalKm: Int = if (type == "MOTOR") 24000 else 40000
+    val taxDueDateMs: Long = 0L
+)
+
+@Entity(
+    tableName = "vehicle_service_configs",
+    foreignKeys = [
+        ForeignKey(
+            entity = Vehicle::class,
+            parentColumns = ["id"],
+            childColumns = ["vehicleId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
+data class VehicleServiceConfig(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val vehicleId: Int,
+    val serviceType: String,
+    val intervalKm: Int
 )
 
 @Entity(
@@ -37,5 +54,6 @@ data class ServiceRecord(
     val title: String, 
     val mileageAtService: Int,
     val notes: String,
-    val dateMs: Long = System.currentTimeMillis()
+    val dateMs: Long = System.currentTimeMillis(),
+    val cost: Double = 0.0
 )

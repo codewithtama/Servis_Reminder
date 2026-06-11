@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.AppRepository
 import com.example.data.ServiceRecord
 import com.example.data.Vehicle
+import com.example.data.VehicleServiceConfig
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -27,11 +28,12 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         engineType: String,
         type: String,
         currentMileage: Int,
+        taxDueDateMs: Long,
         oilIntervalKm: Int,
         beltIntervalKm: Int
     ) {
         viewModelScope.launch {
-            repository.insertVehicle(
+            val vehicleId = repository.insertVehicle(
                 Vehicle(
                     name = name,
                     brand = brand,
@@ -41,8 +43,23 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
                     engineType = engineType,
                     type = type,
                     currentMileage = currentMileage,
-                    oilIntervalKm = oilIntervalKm,
-                    beltIntervalKm = beltIntervalKm
+                    taxDueDateMs = taxDueDateMs
+                )
+            ).toInt()
+
+            // Insert default configurations
+            repository.insertConfig(
+                VehicleServiceConfig(
+                    vehicleId = vehicleId,
+                    serviceType = "Ganti Oli",
+                    intervalKm = oilIntervalKm
+                )
+            )
+            repository.insertConfig(
+                VehicleServiceConfig(
+                    vehicleId = vehicleId,
+                    serviceType = if (type == "MOTOR") "Ganti CVT/Belt" else "Ganti Timing Belt",
+                    intervalKm = beltIntervalKm
                 )
             )
         }
@@ -51,6 +68,18 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     fun updateVehicleMileage(vehicle: Vehicle, currentMileage: Int) {
         viewModelScope.launch {
             repository.updateVehicle(vehicle.copy(currentMileage = currentMileage))
+        }
+    }
+
+    fun updateVehicleTaxDate(vehicle: Vehicle, taxDueDateMs: Long) {
+        viewModelScope.launch {
+            repository.updateVehicle(vehicle.copy(taxDueDateMs = taxDueDateMs))
+        }
+    }
+
+    fun updateVehicle(vehicle: Vehicle) {
+        viewModelScope.launch {
+            repository.updateVehicle(vehicle)
         }
     }
 
@@ -66,7 +95,35 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         return repository.getServiceRecordsForVehicle(vehicleId)
     }
 
-    fun insertServiceRecord(vehicleId: Int, serviceType: String, title: String, mileageAtService: Int, notes: String) {
+    fun getConfigsForVehicle(vehicleId: Int): Flow<List<VehicleServiceConfig>> {
+        return repository.getConfigsForVehicle(vehicleId)
+    }
+
+    fun insertServiceConfig(vehicleId: Int, serviceType: String, intervalKm: Int) {
+        viewModelScope.launch {
+            repository.insertConfig(
+                VehicleServiceConfig(
+                    vehicleId = vehicleId,
+                    serviceType = serviceType,
+                    intervalKm = intervalKm
+                )
+            )
+        }
+    }
+
+    fun updateServiceConfig(config: VehicleServiceConfig) {
+        viewModelScope.launch {
+            repository.updateConfig(config)
+        }
+    }
+
+    fun deleteServiceConfig(config: VehicleServiceConfig) {
+        viewModelScope.launch {
+            repository.deleteConfig(config)
+        }
+    }
+
+    fun insertServiceRecord(vehicleId: Int, serviceType: String, title: String, mileageAtService: Int, notes: String, cost: Double) {
         viewModelScope.launch {
             repository.insertServiceRecord(
                 ServiceRecord(
@@ -74,7 +131,8 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
                     serviceType = serviceType,
                     title = title,
                     mileageAtService = mileageAtService,
-                    notes = notes
+                    notes = notes,
+                    cost = cost
                 )
             )
             // Coba update jarak tempuh kendaraan juga jika lebih baru
@@ -83,6 +141,18 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             if (vehicle != null && mileageAtService > vehicle.currentMileage) {
                 repository.updateVehicle(vehicle.copy(currentMileage = mileageAtService))
             }
+        }
+    }
+
+    fun updateServiceRecord(record: ServiceRecord) {
+        viewModelScope.launch {
+            repository.updateServiceRecord(record)
+        }
+    }
+
+    fun deleteServiceRecord(record: ServiceRecord) {
+        viewModelScope.launch {
+            repository.deleteServiceRecord(record)
         }
     }
 }

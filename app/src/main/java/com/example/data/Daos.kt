@@ -16,7 +16,7 @@ interface VehicleDao {
     fun getVehicleById(id: Int): Flow<Vehicle?>
 
     @Insert
-    suspend fun insertVehicle(vehicle: Vehicle)
+    suspend fun insertVehicle(vehicle: Vehicle): Long
 
     @Update
     suspend fun updateVehicle(vehicle: Vehicle)
@@ -26,12 +26,30 @@ interface VehicleDao {
 }
 
 @Dao
+interface ServiceConfigDao {
+    @Query("SELECT * FROM vehicle_service_configs WHERE vehicleId = :vehicleId")
+    fun getConfigsForVehicle(vehicleId: Int): Flow<List<VehicleServiceConfig>>
+
+    @Insert
+    suspend fun insertConfig(config: VehicleServiceConfig): Long
+
+    @Update
+    suspend fun updateConfig(config: VehicleServiceConfig)
+
+    @Delete
+    suspend fun deleteConfig(config: VehicleServiceConfig)
+}
+
+@Dao
 interface ServiceDao {
     @Query("SELECT * FROM service_records WHERE vehicleId = :vehicleId ORDER BY dateMs DESC")
     fun getServiceRecordsForVehicle(vehicleId: Int): Flow<List<ServiceRecord>>
 
     @Insert
     suspend fun insertServiceRecord(record: ServiceRecord)
+
+    @Update
+    suspend fun updateServiceRecord(record: ServiceRecord)
 
     @Delete
     suspend fun deleteServiceRecord(record: ServiceRecord)

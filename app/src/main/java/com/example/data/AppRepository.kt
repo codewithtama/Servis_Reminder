@@ -4,13 +4,14 @@ import kotlinx.coroutines.flow.Flow
 
 class AppRepository(
     private val vehicleDao: VehicleDao,
-    private val serviceDao: ServiceDao
+    private val serviceDao: ServiceDao,
+    private val serviceConfigDao: ServiceConfigDao
 ) {
     val allVehicles: Flow<List<Vehicle>> = vehicleDao.getAllVehicles()
 
     fun getVehicleById(id: Int): Flow<Vehicle?> = vehicleDao.getVehicleById(id)
 
-    suspend fun insertVehicle(vehicle: Vehicle) = vehicleDao.insertVehicle(vehicle)
+    suspend fun insertVehicle(vehicle: Vehicle): Long = vehicleDao.insertVehicle(vehicle)
     
     suspend fun updateVehicle(vehicle: Vehicle) = vehicleDao.updateVehicle(vehicle)
 
@@ -21,5 +22,19 @@ class AppRepository(
 
     suspend fun insertServiceRecord(record: ServiceRecord) = serviceDao.insertServiceRecord(record)
 
+    suspend fun updateServiceRecord(record: ServiceRecord) = serviceDao.updateServiceRecord(record)
+
     suspend fun deleteServiceRecord(record: ServiceRecord) = serviceDao.deleteServiceRecord(record)
+
+    fun getConfigsForVehicle(vehicleId: Int): Flow<List<VehicleServiceConfig>> =
+        serviceConfigDao.getConfigsForVehicle(vehicleId)
+
+    suspend fun insertConfig(config: VehicleServiceConfig): Long =
+        serviceConfigDao.insertConfig(config)
+
+    suspend fun updateConfig(config: VehicleServiceConfig) =
+        serviceConfigDao.updateConfig(config)
+
+    suspend fun deleteConfig(config: VehicleServiceConfig) =
+        serviceConfigDao.deleteConfig(config)
 }

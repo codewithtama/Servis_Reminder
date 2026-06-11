@@ -1,6 +1,5 @@
 {
   "name": "Servis Reminder",
   "description": "Aplikasi pengingat dan riwayat bongkar/servis motor dan mobil.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": []
 }

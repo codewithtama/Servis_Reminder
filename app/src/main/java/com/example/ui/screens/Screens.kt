@@ -120,6 +120,24 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
     var beltInterval by remember { mutableStateOf("24000") }
     var hasUserEditedOil by remember { mutableStateOf(false) }
     var hasUserEditedBelt by remember { mutableStateOf(false) }
+    var taxDateMs by remember { mutableStateOf(0L) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val calendar = java.util.Calendar.getInstance()
+    if (taxDateMs != 0L) {
+        calendar.timeInMillis = taxDateMs
+    }
+    val datePickerDialog = android.app.DatePickerDialog(
+        context,
+        { _, yearSelected, monthSelected, daySelected ->
+            val selectedCal = java.util.Calendar.getInstance()
+            selectedCal.set(yearSelected, monthSelected, daySelected)
+            taxDateMs = selectedCal.timeInMillis
+        },
+        calendar.get(java.util.Calendar.YEAR),
+        calendar.get(java.util.Calendar.MONTH),
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    )
 
     Scaffold(
         topBar = {
@@ -184,6 +202,33 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
                 singleLine = true
             )
 
+            val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+            val taxDateText = if (taxDateMs == 0L) "Pilih Tanggal Pajak STNK" else sdf.format(java.util.Date(taxDateMs))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { datePickerDialog.show() }
+            ) {
+                OutlinedTextField(
+                    value = taxDateText,
+                    onValueChange = {},
+                    label = { Text("Jatuh Tempo Pajak STNK") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(androidx.compose.ui.graphics.Color.Transparent)
+                )
+            }
+
             OutlinedTextField(
                 value = oilInterval,
                 onValueChange = { 
@@ -218,6 +263,7 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
                             engineType = engine,
                             type = type,
                             currentMileage = mileage.toIntOrNull() ?: 0,
+                            taxDueDateMs = taxDateMs,
                             oilIntervalKm = oilInterval.toIntOrNull() ?: (if (type == "MOTOR") 2000 else 5000),
                             beltIntervalKm = beltInterval.toIntOrNull() ?: (if (type == "MOTOR") 24000 else 40000)
                         )
@@ -242,9 +288,28 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
     val servicesFlow = remember(vehicleId) { viewModel.getServiceRecordsForVehicle(vehicleId) }
     val services by servicesFlow.collectAsStateWithLifecycle(emptyList())
 
+    val configsFlow = remember(vehicleId) { viewModel.getConfigsForVehicle(vehicleId) }
+    val configs by configsFlow.collectAsStateWithLifecycle(emptyList())
+
     var showUpdateOdoDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showAddConfigDialog by remember { mutableStateOf(false) }
+    var showUpdateTaxDialog by remember { mutableStateOf(false) }
+    var showEditServiceDialog by remember { mutableStateOf(false) }
+    var showDeleteServiceConfirmDialog by remember { mutableStateOf(false) }
+    
     var newOdoValue by remember { mutableStateOf("") }
+    var configType by remember { mutableStateOf("") }
+    var configInterval by remember { mutableStateOf("") }
+    var taxDateMs by remember { mutableStateOf(0L) }
+
+    var selectedServiceToEdit by remember { mutableStateOf<ServiceRecord?>(null) }
+    var selectedServiceToDelete by remember { mutableStateOf<ServiceRecord?>(null) }
+    var editServiceTitle by remember { mutableStateOf("") }
+    var editServiceType by remember { mutableStateOf("") }
+    var editServiceMileage by remember { mutableStateOf("") }
+    var editServiceCost by remember { mutableStateOf("") }
+    var editServiceNotes by remember { mutableStateOf("") }
 
     LaunchedEffect(showUpdateOdoDialog) {
         if (showUpdateOdoDialog && vehicle != null) {
@@ -252,10 +317,34 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
         }
     }
 
+    LaunchedEffect(showUpdateTaxDialog) {
+        if (showUpdateTaxDialog && vehicle != null) {
+            taxDateMs = vehicle!!.taxDueDateMs
+        }
+    }
+
     if (vehicle == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val calendar = java.util.Calendar.getInstance()
+    if (taxDateMs != 0L) {
+        calendar.timeInMillis = taxDateMs
+    }
+    val datePickerDialog = android.app.DatePickerDialog(
+        context,
+        { _, yearSelected, monthSelected, daySelected ->
+            val selectedCal = java.util.Calendar.getInstance()
+            selectedCal.set(yearSelected, monthSelected, daySelected)
+            viewModel.updateVehicleTaxDate(vehicle!!, selectedCal.timeInMillis)
+            showUpdateTaxDialog = false
+        },
+        calendar.get(java.util.Calendar.YEAR),
+        calendar.get(java.util.Calendar.MONTH),
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    )
 
     if (showUpdateOdoDialog) {
         AlertDialog(
@@ -320,6 +409,191 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
         )
     }
 
+    if (showAddConfigDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddConfigDialog = false },
+            title = { Text("Tambah Pengingat Servis") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = configType,
+                        onValueChange = { configType = it },
+                        label = { Text("Jenis Servis (ex: Ganti Kampas Rem)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = configInterval,
+                        onValueChange = { configInterval = it.filter { char -> char.isDigit() } },
+                        label = { Text("Batas Interval (KM)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val interval = configInterval.toIntOrNull()
+                        if (configType.isNotBlank() && interval != null) {
+                            viewModel.insertServiceConfig(vehicleId, configType, interval)
+                            configType = ""
+                            configInterval = ""
+                            showAddConfigDialog = false
+                        }
+                    },
+                    enabled = configType.isNotBlank() && configInterval.isNotBlank()
+                ) {
+                    Text("Simpan")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    configType = ""
+                    configInterval = ""
+                    showAddConfigDialog = false 
+                }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (showDeleteServiceConfirmDialog && selectedServiceToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showDeleteServiceConfirmDialog = false
+                selectedServiceToDelete = null
+            },
+            title = { Text("Hapus Riwayat Servis") },
+            text = { Text("Apakah Anda yakin ingin menghapus catatan servis '${selectedServiceToDelete!!.serviceType}' di '${selectedServiceToDelete!!.title}'?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteServiceRecord(selectedServiceToDelete!!)
+                        showDeleteServiceConfirmDialog = false
+                        selectedServiceToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Hapus")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showDeleteServiceConfirmDialog = false
+                    selectedServiceToDelete = null
+                }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (showEditServiceDialog && selectedServiceToEdit != null) {
+        val editServiceOptions = remember(configs) {
+            val list = configs.map { it.serviceType }.toMutableList()
+            if (!list.contains("Lainnya")) {
+                list.add("Lainnya")
+            }
+            list
+        }
+
+        AlertDialog(
+            onDismissRequest = { 
+                showEditServiceDialog = false
+                selectedServiceToEdit = null
+            },
+            title = { Text("Edit Riwayat Servis") },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = editServiceTitle,
+                        onValueChange = { editServiceTitle = it },
+                        label = { Text("Nama Tempat/Pembelian") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Text("Jenis Servis", style = MaterialTheme.typography.titleSmall)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.horizontalScroll(rememberScrollState())
+                    ) {
+                        editServiceOptions.forEach { option ->
+                            FilterChip(
+                                selected = editServiceType == option,
+                                onClick = { editServiceType = option },
+                                label = { Text(option) }
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = editServiceMileage,
+                        onValueChange = { editServiceMileage = it.filter { char -> char.isDigit() } },
+                        label = { Text("Odometer (KM)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = editServiceCost,
+                        onValueChange = { editServiceCost = it.filter { char -> char.isDigit() } },
+                        label = { Text("Biaya (Rp)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = editServiceNotes,
+                        onValueChange = { editServiceNotes = it },
+                        label = { Text("Catatan Tambahan (Opsional)") },
+                        modifier = Modifier.fillMaxWidth().height(80.dp),
+                        maxLines = 3
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val mileageVal = editServiceMileage.toIntOrNull()
+                        if (editServiceTitle.isNotBlank() && mileageVal != null) {
+                            viewModel.updateServiceRecord(
+                                selectedServiceToEdit!!.copy(
+                                    title = editServiceTitle,
+                                    serviceType = editServiceType,
+                                    mileageAtService = mileageVal,
+                                    cost = editServiceCost.toDoubleOrNull() ?: 0.0,
+                                    notes = editServiceNotes
+                                )
+                            )
+                            if (vehicle != null && mileageVal > vehicle!!.currentMileage) {
+                                viewModel.updateVehicleMileage(vehicle!!, mileageVal)
+                            }
+                            showEditServiceDialog = false
+                            selectedServiceToEdit = null
+                        }
+                    },
+                    enabled = editServiceTitle.isNotBlank() && editServiceMileage.isNotBlank()
+                ) {
+                    Text("Simpan")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showEditServiceDialog = false
+                    selectedServiceToEdit = null
+                }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -342,6 +616,9 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                     }
                 },
                 actions = {
+                    IconButton(onClick = { navController.navigate("edit_vehicle/${vehicle!!.id}") }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Kendaraan", tint = MaterialTheme.colorScheme.primary)
+                    }
                     IconButton(onClick = { showDeleteConfirmDialog = true }) {
                         Icon(Icons.Default.Delete, contentDescription = "Hapus Kendaraan", tint = MaterialTheme.colorScheme.error)
                     }
@@ -360,16 +637,46 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
             )
         }
     ) { padding ->
+        val totalExpense = services.sumOf { it.cost }
+        val daysRemaining = if (vehicle!!.taxDueDateMs > 0L) {
+            val diffMs = vehicle!!.taxDueDateMs - System.currentTimeMillis()
+            diffMs / (24 * 60 * 60 * 1000)
+        } else {
+            null
+        }
+
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
             
-            val lastOilChange = services.firstOrNull { it.serviceType == "Ganti Oli" }
-            val nextTargetOil = (lastOilChange?.mileageAtService ?: vehicle!!.currentMileage) + vehicle!!.oilIntervalKm
-            val remainingOil = nextTargetOil - vehicle!!.currentMileage
+            // Tax Alert Card
+            if (daysRemaining != null) {
+                item {
+                    val isDue = daysRemaining <= 30
+                    if (isDue) {
+                        val cardColor = if (daysRemaining <= 0) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer
+                        val textColor = if (daysRemaining <= 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = cardColor),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = if (daysRemaining < 0) "Pajak STNK Telat!" else "Pajak STNK Segera Jatuh Tempo!",
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor
+                                )
+                                Text(
+                                    text = if (daysRemaining < 0) "Sudah telat ${kotlin.math.abs(daysRemaining)} hari." else "Tinggal $daysRemaining hari lagi.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = textColor
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
-            val lastCvtbelt = services.firstOrNull { it.serviceType == "Ganti CVT/Belt" }
-            val nextTargetCvtbelt = (lastCvtbelt?.mileageAtService ?: vehicle!!.currentMileage) + vehicle!!.beltIntervalKm
-            val remainingCvtbelt = nextTargetCvtbelt - vehicle!!.currentMileage
-
+            // Odometer Header Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -414,79 +721,174 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                 }
             }
 
+            // Tax Odometer & Expenses Cards
             item {
-                if (remainingOil <= 0) {
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Tax Card
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .height(110.dp)
+                            .clickable { datePickerDialog.show() },
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Build, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(32.dp))
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Oli Perlu Diganti", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
-                                Text("Sudah melewati batas target $nextTargetOil KM", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                        Column(modifier = Modifier.padding(12.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+                            Text("Jatuh Tempo Pajak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                            Column {
+                                if (vehicle!!.taxDueDateMs > 0L) {
+                                    val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+                                    Text(sdf.format(java.util.Date(vehicle!!.taxDueDateMs)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                    val remainingText = if (daysRemaining != null) {
+                                        if (daysRemaining < 0) "Telat ${kotlin.math.abs(daysRemaining)} Hari" else "$daysRemaining Hari Lagi"
+                                    } else ""
+                                    Text(remainingText, style = MaterialTheme.typography.labelSmall, color = if (daysRemaining != null && daysRemaining <= 30) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                                } else {
+                                    Text("Belum diatur", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                    Text("Klik untuk atur", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    }
+
+                    // Total Expense Card
+                    Card(
+                        modifier = Modifier.weight(1.5f).height(110.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+                            Text("Total Pengeluaran", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                            Column {
+                                val decFormat = java.text.DecimalFormat("#,###")
+                                val symbols = java.text.DecimalFormatSymbols(java.util.Locale("in", "ID"))
+                                symbols.groupingSeparator = '.'
+                                decFormat.decimalFormatSymbols = symbols
+                                val costText = "Rp " + decFormat.format(totalExpense)
+                                Text(costText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                Text("Riwayat Servis", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
                 }
             }
 
+            // Section: Target Servis
+            item {
+                Text(
+                    "Target Servis",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+
+            if (configs.isEmpty()) {
+                item {
+                    Text("Belum ada konfigurasi pengingat.", modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 16.dp)) {
+                        configs.forEach { config ->
+                            val lastService = services.firstOrNull { it.serviceType.lowercase() == config.serviceType.lowercase() }
+                            val nextTarget = (lastService?.mileageAtService ?: vehicle!!.currentMileage) + config.intervalKm
+                            val remaining = nextTarget - vehicle!!.currentMileage
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (remaining <= 0) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = config.serviceType,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (remaining <= 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Interval: ${config.intervalKm} KM • Terakhir: ${lastService?.mileageAtService ?: "-"} KM",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (remaining <= 0) MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        if (remaining <= 0) {
+                                            Text("Ganti!", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                                        } else {
+                                            Text("$remaining KM", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                            Text("Lagi", style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section: Pengaturan Pengingat Servis
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Oil Card
-                    Card(
-                        modifier = Modifier.weight(1f).height(130.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Icon(Icons.Default.Build, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                            Column {
-                                Text("Oli Mesin", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-                                if (remainingOil > 0) {
-                                    Text("$remainingOil KM", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                    Text("Lagi", style = MaterialTheme.typography.labelSmall)
-                                } else {
-                                    Text("Ganti!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Konfigurasi Pengingat",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    TextButton(onClick = { showAddConfigDialog = true }) {
+                        Text("Tambah Baru")
                     }
+                }
+            }
 
-                    // CVT/Belt Card
-                    Card(
-                        modifier = Modifier.weight(1f).height(130.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Icon(Icons.Default.Build, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                            Column {
-                                Text(if (vehicle!!.type == "MOTOR") "V-Belt / CVT" else "Timing Belt", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-                                if (remainingCvtbelt > 0) {
-                                    Text("$remainingCvtbelt KM", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                    Text("Lagi", style = MaterialTheme.typography.labelSmall)
-                                } else {
-                                    Text("Periksa!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+            if (configs.isNotEmpty()) {
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        configs.forEach { config ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(8.dp, 4.dp, 8.dp, 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(config.serviceType, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                        Text("Interval: ${config.intervalKm} KM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                    }
+                                    IconButton(onClick = { viewModel.deleteServiceConfig(config) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Hapus Konfigurasi", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
+            // Section: Riwayat Servis
             item {
                 Text(
                     "Riwayat Servis",
@@ -510,26 +912,67 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
-                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
+                        Column {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Build, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                                Spacer(Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(service.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                                    val date = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(service.dateMs))
+                                    Text("$date • Odo: ${service.mileageAtService} KM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(service.serviceType, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                    if (service.cost > 0) {
+                                        val decFormat = java.text.DecimalFormat("#,###")
+                                        val symbols = java.text.DecimalFormatSymbols(java.util.Locale("in", "ID"))
+                                        symbols.groupingSeparator = '.'
+                                        decFormat.decimalFormatSymbols = symbols
+                                        Text("Rp " + decFormat.format(service.cost), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                            if (service.notes.isNotBlank()) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                                Text(service.notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(12.dp))
+                            }
+                            
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Build, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                TextButton(
+                                    onClick = {
+                                        selectedServiceToEdit = service
+                                        editServiceTitle = service.title
+                                        editServiceType = service.serviceType
+                                        editServiceMileage = service.mileageAtService.toString()
+                                        editServiceCost = service.cost.toInt().toString()
+                                        editServiceNotes = service.notes
+                                        showEditServiceDialog = true
+                                    }
+                                ) {
+                                    Text("Edit", style = MaterialTheme.typography.labelMedium)
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                TextButton(
+                                    onClick = {
+                                        selectedServiceToDelete = service
+                                        showDeleteServiceConfirmDialog = true
+                                    }
+                                ) {
+                                    Text("Hapus", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                                }
                             }
-                            Spacer(Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(service.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                                val date = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(service.dateMs))
-                                Text("$date • Odo: ${service.mileageAtService} KM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
-                            }
-                            Text(service.serviceType, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                        }
-                        if (service.notes.isNotBlank()) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                            Text(service.notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(12.dp))
                         }
                     }
                 }
@@ -543,10 +986,14 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
 fun AddServiceScreen(navController: NavController, viewModel: MainViewModel, vehicleId: Int) {
     val vehicle by viewModel.getVehicle(vehicleId).collectAsStateWithLifecycle(null)
     
+    val configsFlow = remember(vehicleId) { viewModel.getConfigsForVehicle(vehicleId) }
+    val configs by configsFlow.collectAsStateWithLifecycle(emptyList())
+
     var title by remember { mutableStateOf("") }
     var serviceType by remember { mutableStateOf("Ganti Oli") }
     var mileage by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
+    var costStr by remember { mutableStateOf("") }
 
     LaunchedEffect(vehicle) {
         if (vehicle != null && mileage.isEmpty()) {
@@ -554,7 +1001,19 @@ fun AddServiceScreen(navController: NavController, viewModel: MainViewModel, veh
         }
     }
 
-    val serviceOptions = listOf("Ganti Oli", "Ganti CVT/Belt", "Ganti Busi", "Servis Rutin", "Lainnya")
+    val serviceOptions = remember(configs) {
+        val list = configs.map { it.serviceType }.toMutableList()
+        if (!list.contains("Lainnya")) {
+            list.add("Lainnya")
+        }
+        list
+    }
+
+    LaunchedEffect(serviceOptions) {
+        if (serviceOptions.isNotEmpty() && !serviceOptions.contains(serviceType)) {
+            serviceType = serviceOptions.first()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -607,6 +1066,14 @@ fun AddServiceScreen(navController: NavController, viewModel: MainViewModel, veh
             )
 
             OutlinedTextField(
+                value = costStr,
+                onValueChange = { costStr = it.filter { char -> char.isDigit() } },
+                label = { Text("Biaya Servis (Rp) (ex: 150000)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
                 label = { Text("Catatan Tambahan (Opsional)") },
@@ -622,7 +1089,8 @@ fun AddServiceScreen(navController: NavController, viewModel: MainViewModel, veh
                             serviceType = serviceType,
                             title = title,
                             mileageAtService = mileage.toIntOrNull() ?: 0,
-                            notes = notes
+                            notes = notes,
+                            cost = costStr.toDoubleOrNull() ?: 0.0
                         )
                         navController.popBackStack()
                     }
@@ -632,6 +1100,168 @@ fun AddServiceScreen(navController: NavController, viewModel: MainViewModel, veh
             ) {
                 Text("Simpan Riwayat Servis")
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditVehicleScreen(navController: NavController, viewModel: MainViewModel, vehicleId: Int) {
+    val vehicle by viewModel.getVehicle(vehicleId).collectAsStateWithLifecycle(null)
+
+    var name by remember { mutableStateOf("") }
+    var brand by remember { mutableStateOf("") }
+    var model by remember { mutableStateOf("") }
+    var year by remember { mutableStateOf("") }
+    var plate by remember { mutableStateOf("") }
+    var engine by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf("MOTOR") }
+    var mileage by remember { mutableStateOf("") }
+    var taxDateMs by remember { mutableStateOf(0L) }
+
+    LaunchedEffect(vehicle) {
+        if (vehicle != null) {
+            name = vehicle!!.name
+            brand = vehicle!!.brand
+            model = vehicle!!.model
+            year = vehicle!!.year
+            plate = vehicle!!.plateNumber
+            engine = vehicle!!.engineType
+            type = vehicle!!.type
+            mileage = vehicle!!.currentMileage.toString()
+            taxDateMs = vehicle!!.taxDueDateMs
+        }
+    }
+
+    if (vehicle == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val calendar = java.util.Calendar.getInstance()
+    if (taxDateMs != 0L) {
+        calendar.timeInMillis = taxDateMs
+    }
+    val datePickerDialog = android.app.DatePickerDialog(
+        context,
+        { _, yearSelected, monthSelected, daySelected ->
+            val selectedCal = java.util.Calendar.getInstance()
+            selectedCal.set(yearSelected, monthSelected, daySelected)
+            taxDateMs = selectedCal.timeInMillis
+        },
+        calendar.get(java.util.Calendar.YEAR),
+        calendar.get(java.util.Calendar.MONTH),
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    )
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Edit Kendaraan") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                ),
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier.padding(padding).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nama Panggilan Kendaraan") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(value = brand, onValueChange = { brand = it }, label = { Text("Merek") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = year, onValueChange = { year = it.filter { char -> char.isDigit() } }, label = { Text("Tahun") }, modifier = Modifier.weight(1f), singleLine = true)
+                OutlinedTextField(value = plate, onValueChange = { plate = it }, label = { Text("Nomor Plat") }, modifier = Modifier.weight(1f), singleLine = true)
+            }
+            
+            OutlinedTextField(value = engine, onValueChange = { engine = it }, label = { Text("Kapasitas Mesin") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            
+            Text("Jenis Kendaraan", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                FilterChip(
+                    selected = type == "MOTOR",
+                    onClick = { type = "MOTOR" },
+                    label = { Text("Motor") },
+                    leadingIcon = { Icon(Icons.Default.TwoWheeler, contentDescription = null) }
+                )
+                FilterChip(
+                    selected = type == "MOBIL",
+                    onClick = { type = "MOBIL" },
+                    label = { Text("Mobil") },
+                    leadingIcon = { Icon(Icons.Default.DirectionsCar, contentDescription = null) }
+                )
+            }
+
+            OutlinedTextField(
+                value = mileage,
+                onValueChange = { mileage = it.filter { char -> char.isDigit() } },
+                label = { Text("Jarak Tempuh Saat Ini (KM)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+            val taxDateText = if (taxDateMs == 0L) "Pilih Tanggal Pajak STNK" else sdf.format(java.util.Date(taxDateMs))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { datePickerDialog.show() }
+            ) {
+                OutlinedTextField(
+                    value = taxDateText,
+                    onValueChange = {},
+                    label = { Text("Jatuh Tempo Pajak STNK") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(androidx.compose.ui.graphics.Color.Transparent)
+                )
+            }
+
+            Button(
+                onClick = {
+                    if (name.isNotBlank() && mileage.isNotBlank()) {
+                        viewModel.updateVehicle(
+                            vehicle!!.copy(
+                                name = name,
+                                brand = brand,
+                                model = model,
+                                year = year,
+                                plateNumber = plate,
+                                engineType = engine,
+                                type = type,
+                                currentMileage = mileage.toIntOrNull() ?: 0,
+                                taxDueDateMs = taxDateMs
+                            )
+                        )
+                        navController.popBackStack()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                enabled = name.isNotBlank() && mileage.isNotBlank()
+            ) {
+                Text("Simpan Perubahan")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
