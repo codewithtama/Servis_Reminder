@@ -15,7 +15,8 @@ data class Vehicle(
     val engineType: String = "",
     val type: String, // "MOTOR" or "MOBIL"
     val currentMileage: Int,
-    val taxDueDateMs: Long = 0L
+    val taxDueDateMs: Long = 0L,
+    val startingMileage: Int
 )
 
 @Entity(

@@ -41,7 +41,20 @@ class ReminderWorker(
         for (vehicle in vehicles) {
             // 1. Pengecekan Jatuh Tempo Pajak STNK
             if (vehicle.taxDueDateMs > 0L) {
-                val diffMs = vehicle.taxDueDateMs - System.currentTimeMillis()
+                val targetCal = java.util.Calendar.getInstance().apply {
+                    timeInMillis = vehicle.taxDueDateMs
+                    set(java.util.Calendar.HOUR_OF_DAY, 0)
+                    set(java.util.Calendar.MINUTE, 0)
+                    set(java.util.Calendar.SECOND, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }
+                val currentCal = java.util.Calendar.getInstance().apply {
+                    set(java.util.Calendar.HOUR_OF_DAY, 0)
+                    set(java.util.Calendar.MINUTE, 0)
+                    set(java.util.Calendar.SECOND, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }
+                val diffMs = targetCal.timeInMillis - currentCal.timeInMillis
                 val daysRemaining = diffMs / (24 * 60 * 60 * 1000)
 
                 if (daysRemaining <= 30) {
@@ -65,8 +78,13 @@ class ReminderWorker(
             val services = serviceDao.getServiceRecordsForVehicle(vehicle.id).first()
 
             for (config in configs) {
-                val lastService = services.firstOrNull { it.serviceType.lowercase() == config.serviceType.lowercase() }
-                val targetMileage = (lastService?.mileageAtService ?: vehicle.currentMileage) + config.intervalKm
+                val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
+                val lastServiceMileage = lastService?.mileageAtService
+                val targetMileage = if (lastServiceMileage != null) {
+                    lastServiceMileage + config.intervalKm
+                } else {
+                    if (config.intervalKm <= 0) vehicle.currentMileage else ((vehicle.currentMileage / config.intervalKm) + 1) * config.intervalKm
+                }
                 val remainingKm = targetMileage - vehicle.currentMileage
 
                 if (remainingKm <= 200) {

@@ -224,8 +224,24 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                                     }
                                     
                                     // Mini Bento 2: Alert Pajak
-                                    val taxAlerts = vehicles.count { 
-                                        it.taxDueDateMs > 0L && (it.taxDueDateMs - System.currentTimeMillis()) / (24 * 60 * 60 * 1000) <= 30
+                                    val taxAlerts = vehicles.count { vehicle ->
+                                        if (vehicle.taxDueDateMs <= 0L) return@count false
+                                        val targetCal = java.util.Calendar.getInstance().apply {
+                                            timeInMillis = vehicle.taxDueDateMs
+                                            set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                            set(java.util.Calendar.MINUTE, 0)
+                                            set(java.util.Calendar.SECOND, 0)
+                                            set(java.util.Calendar.MILLISECOND, 0)
+                                        }
+                                        val currentCal = java.util.Calendar.getInstance().apply {
+                                            set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                            set(java.util.Calendar.MINUTE, 0)
+                                            set(java.util.Calendar.SECOND, 0)
+                                            set(java.util.Calendar.MILLISECOND, 0)
+                                        }
+                                        val diffMs = targetCal.timeInMillis - currentCal.timeInMillis
+                                        val remaining = diffMs / (24 * 60 * 60 * 1000)
+                                        remaining <= 30
                                     }
                                     Card(
                                         modifier = Modifier.weight(1f),
@@ -927,7 +943,20 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
     ) { padding ->
         val totalExpense = services.sumOf { it.cost }
         val daysRemaining = if (vehicle!!.taxDueDateMs > 0L) {
-            val diffMs = vehicle!!.taxDueDateMs - System.currentTimeMillis()
+            val targetCal = java.util.Calendar.getInstance().apply {
+                timeInMillis = vehicle!!.taxDueDateMs
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+            val currentCal = java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+            val diffMs = targetCal.timeInMillis - currentCal.timeInMillis
             diffMs / (24 * 60 * 60 * 1000)
         } else {
             null
@@ -966,11 +995,16 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
 
             // Odometer Bento Card with Progress Bar
             item {
-                val closestConfig = configs.mapNotNull { config ->
-                    val lastService = services.firstOrNull { it.serviceType.lowercase() == config.serviceType.lowercase() }
-                    val targetMileage = (lastService?.mileageAtService ?: vehicle!!.currentMileage) + config.intervalKm
+                val closestConfig = configs.map { config ->
+                    val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
+                    val lastServiceMileage = lastService?.mileageAtService
+                    val targetMileage = if (lastServiceMileage != null) {
+                        lastServiceMileage + config.intervalKm
+                    } else {
+                        if (config.intervalKm <= 0) vehicle!!.currentMileage else ((vehicle!!.currentMileage / config.intervalKm) + 1) * config.intervalKm
+                    }
                     val remaining = targetMileage - vehicle!!.currentMileage
-                    if (remaining >= 0) config to remaining else null
+                    config to remaining
                 }.minByOrNull { it.second }
 
                 val progress = if (closestConfig != null && closestConfig.first.intervalKm > 0) {
@@ -1023,25 +1057,34 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                             }
                         }
                         
+                        val isOverdue = closestConfig != null && closestConfig.second <= 0
+                        val progressBarColor = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        val progressBarTrackColor = if (isOverdue) MaterialTheme.colorScheme.error.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         // Odo Progress Bar towards next service
                         LinearProgressIndicator(
                             progress = { progress },
-                            modifier = Modifier.fillMaxWidth().height(8.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp)),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            modifier = Modifier.fillMaxWidth().height(8.dp).background(progressBarColor.copy(alpha = 0.1f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp)),
+                            color = progressBarColor,
+                            trackColor = progressBarTrackColor,
                             strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = if (closestConfig != null) {
-                                "Target terdekat: ${closestConfig.first.serviceType} (${closestConfig.second} KM lagi)"
+                                if (closestConfig.second <= 0) {
+                                    "Target terlewat: ${closestConfig.first.serviceType} (Terlewat ${kotlin.math.abs(closestConfig.second)} KM!)"
+                                } else {
+                                    "Target terdekat: ${closestConfig.first.serviceType} (${closestConfig.second} KM lagi)"
+                                }
                             } else {
                                 "Semua target pengingat servis aman"
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
+                            fontWeight = if (isOverdue) FontWeight.Bold else FontWeight.Normal
                         )
                     }
                 }
@@ -1195,8 +1238,13 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
             } else {
                 // Render target configs in a Bento 2-column grid format
                 val targetPairs = configs.map { config ->
-                    val lastService = services.firstOrNull { it.serviceType.lowercase() == config.serviceType.lowercase() }
-                    val nextTarget = (lastService?.mileageAtService ?: vehicle!!.currentMileage) + config.intervalKm
+                    val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
+                    val lastServiceMileage = lastService?.mileageAtService
+                    val nextTarget = if (lastServiceMileage != null) {
+                        lastServiceMileage + config.intervalKm
+                    } else {
+                        if (config.intervalKm <= 0) vehicle!!.currentMileage else ((vehicle!!.currentMileage / config.intervalKm) + 1) * config.intervalKm
+                    }
                     val remaining = nextTarget - vehicle!!.currentMileage
                     config to remaining
                 }
