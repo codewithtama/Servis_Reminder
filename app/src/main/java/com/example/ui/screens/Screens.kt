@@ -19,6 +19,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -149,44 +153,210 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                     Text("Belum ada kendaraan. Tambahkan sekarang!", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
+                val bentoChunks = remember(vehicles) {
+                    val list = mutableListOf<List<Vehicle>>()
+                    var i = 0
+                    while (i < vehicles.size) {
+                        if (i == 0) {
+                            list.add(listOf(vehicles[i]))
+                            i++
+                        } else if (i + 1 < vehicles.size) {
+                            list.add(listOf(vehicles[i], vehicles[i+1]))
+                            i += 2
+                        } else {
+                            list.add(listOf(vehicles[i]))
+                            i++
+                        }
+                    }
+                    list
+                }
+
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(), 
                     contentPadding = PaddingValues(16.dp), 
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(vehicles) { vehicle ->
+                    // Welcome Bento Card
+                    item {
                         Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { navController.navigate("vehicle_detail/${vehicle.id}") },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
-                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
-                                    contentAlignment = Alignment.Center
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Text(
+                                    text = "Halo, Pengendara! 👋",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Pantau kondisi kendaraan kesayangan Anda agar tetap prima.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = if (vehicle.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
-                                        contentDescription = vehicle.type,
-                                        tint = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column {
-                                    Text(vehicle.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    
-                                    val detailParts = listOf(vehicle.brand, vehicle.model, vehicle.plateNumber).filter { it.isNotBlank() }
-                                    if (detailParts.isNotEmpty()) {
-                                        Text(detailParts.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                                    // Mini Bento 1: Garasi
+                                    Card(
+                                        modifier = Modifier.weight(1f),
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+                                    ) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Text("Garasi", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                            Text("${vehicles.size} Unit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        }
                                     }
                                     
-                                    Text("Jarak Tempuh: ${vehicle.currentMileage} KM", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+                                    // Mini Bento 2: Alert Pajak
+                                    val taxAlerts = vehicles.count { 
+                                        it.taxDueDateMs > 0L && (it.taxDueDateMs - System.currentTimeMillis()) / (24 * 60 * 60 * 1000) <= 30
+                                    }
+                                    Card(
+                                        modifier = Modifier.weight(1f),
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (taxAlerts > 0) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f) 
+                                                             else MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                                        )
+                                    ) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Text("Alert Pajak", style = MaterialTheme.typography.labelSmall, color = if (taxAlerts > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                                            Text("$taxAlerts Jatuh Tempo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = if (taxAlerts > 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Vehicle Bento Grid Items
+                    bentoChunks.forEachIndexed { index, chunk ->
+                        if (chunk.size == 1) {
+                            val vehicle = chunk[0]
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { navController.navigate("vehicle_detail/${vehicle.id}") },
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                ) {
+                                    Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (vehicle.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
+                                                contentDescription = vehicle.type,
+                                                tint = MaterialTheme.colorScheme.onPrimary,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(vehicle.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            val detailParts = listOf(vehicle.brand, vehicle.model, vehicle.plateNumber).filter { it.isNotBlank() }
+                                            if (detailParts.isNotEmpty()) {
+                                                Text(detailParts.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Speed,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "${vehicle.currentMileage} KM",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    chunk.forEach { vehicle ->
+                                        Card(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(180.dp)
+                                                .clickable { navController.navigate("vehicle_detail/${vehicle.id}") },
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(16.dp).fillMaxSize(),
+                                                verticalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(44.dp)
+                                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), androidx.compose.foundation.shape.CircleShape),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (vehicle.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
+                                                        contentDescription = vehicle.type,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(22.dp)
+                                                    )
+                                                }
+                                                Column {
+                                                    Text(
+                                                        text = vehicle.name,
+                                                        style = MaterialTheme.typography.titleMedium,
+                                                        fontWeight = FontWeight.Bold,
+                                                        maxLines = 1,
+                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                    if (vehicle.plateNumber.isNotBlank()) {
+                                                        Text(vehicle.plateNumber, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                                    }
+                                                    Spacer(modifier = Modifier.height(6.dp))
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Speed,
+                                                            contentDescription = null,
+                                                            tint = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text(
+                                                            text = "${vehicle.currentMileage} KM",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -785,87 +955,135 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                 }
             }
 
-            // Odometer Header Card
+            // Odometer Bento Card with Progress Bar
             item {
+                val closestConfig = configs.mapNotNull { config ->
+                    val lastService = services.firstOrNull { it.serviceType.lowercase() == config.serviceType.lowercase() }
+                    val targetMileage = (lastService?.mileageAtService ?: vehicle!!.currentMileage) + config.intervalKm
+                    val remaining = targetMileage - vehicle!!.currentMileage
+                    if (remaining >= 0) config to remaining else null
+                }.minByOrNull { it.second }
+
+                val progress = if (closestConfig != null && closestConfig.first.intervalKm > 0) {
+                    val elapsed = closestConfig.first.intervalKm - closestConfig.second
+                    (elapsed.toFloat() / closestConfig.first.intervalKm).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
-                                contentAlignment = Alignment.Center
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Speed,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text("Odometer Saat Ini", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                    Text("${vehicle!!.currentMileage} KM", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            IconButton(
+                                onClick = { showUpdateOdoDialog = true }
                             ) {
                                 Icon(
-                                    imageVector = if (vehicle!!.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
-                                    contentDescription = vehicle!!.type,
-                                    tint = MaterialTheme.colorScheme.onPrimary
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Update Odometer",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text("Odometer Saat Ini", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                                Text("${vehicle!!.currentMileage} KM", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            }
                         }
-                        IconButton(
-                            onClick = { showUpdateOdoDialog = true }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Update Odometer",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Odo Progress Bar towards next service
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth().height(8.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp)),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (closestConfig != null) {
+                                "Target terdekat: ${closestConfig.first.serviceType} (${closestConfig.second} KM lagi)"
+                            } else {
+                                "Semua target pengingat servis aman"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
                     }
                 }
             }
 
-            // Tax Odometer & Expenses Cards
+            // Tax Odometer & Expenses Bento Cards (Row side-by-side)
             item {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     // Tax Card
+                    val taxCardColor = if (daysRemaining != null) {
+                        if (daysRemaining <= 0) MaterialTheme.colorScheme.errorContainer 
+                        else if (daysRemaining <= 30) MaterialTheme.colorScheme.tertiaryContainer 
+                        else MaterialTheme.colorScheme.surface
+                    } else MaterialTheme.colorScheme.surface
+                    
+                    val taxTextColor = if (daysRemaining != null) {
+                        if (daysRemaining <= 0) MaterialTheme.colorScheme.onErrorContainer 
+                        else if (daysRemaining <= 30) MaterialTheme.colorScheme.onTertiaryContainer 
+                        else MaterialTheme.colorScheme.onSurface
+                    } else MaterialTheme.colorScheme.onSurface
+
                     Card(
                         modifier = Modifier
-                            .weight(1.5f)
-                            .height(110.dp)
+                            .weight(1f)
+                            .height(115.dp)
                             .clickable { datePickerDialog.show() },
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        colors = CardDefaults.cardColors(containerColor = taxCardColor),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+                        Column(modifier = Modifier.padding(14.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Jatuh Tempo Pajak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                Text("Pajak STNK", style = MaterialTheme.typography.labelSmall, color = if (daysRemaining != null && daysRemaining <= 30) taxTextColor else MaterialTheme.colorScheme.secondary)
                                 Icon(
                                     imageVector = Icons.Default.DateRange,
                                     contentDescription = "Pilih Tanggal Pajak",
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = if (daysRemaining != null && daysRemaining <= 30) taxTextColor else MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
                             Column {
                                 if (vehicle!!.taxDueDateMs > 0L) {
                                     val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
-                                    Text(sdf.format(java.util.Date(vehicle!!.taxDueDateMs)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                    val remainingText = if (daysRemaining != null) {
-                                        if (daysRemaining < 0) "Telat ${kotlin.math.abs(daysRemaining)} Hari" else "$daysRemaining Hari Lagi"
-                                    } else ""
-                                    Text(remainingText, style = MaterialTheme.typography.labelSmall, color = if (daysRemaining != null && daysRemaining <= 30) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                                    Text(sdf.format(java.util.Date(vehicle!!.taxDueDateMs)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = taxTextColor)
+                                    val remainingText = if (daysRemaining < 0) "Telat ${kotlin.math.abs(daysRemaining)} Hari" else "$daysRemaining Hari Lagi"
+                                    Text(remainingText, style = MaterialTheme.typography.labelSmall, color = if (daysRemaining <= 30) taxTextColor else MaterialTheme.colorScheme.primary)
                                 } else {
                                     Text("Belum diatur", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                                     Text("Klik untuk atur", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
@@ -876,22 +1094,74 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
 
                     // Total Expense Card
                     Card(
-                        modifier = Modifier.weight(1.5f).height(110.dp),
+                        modifier = Modifier.weight(1f).height(115.dp),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                            Text("Total Pengeluaran", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                        Column(modifier = Modifier.padding(14.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Total Pengeluaran", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalanceWallet,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                             Column {
                                 val decFormat = java.text.DecimalFormat("#,###")
                                 val symbols = java.text.DecimalFormatSymbols(java.util.Locale("in", "ID"))
                                 symbols.groupingSeparator = '.'
                                 decFormat.decimalFormatSymbols = symbols
                                 val costText = "Rp " + decFormat.format(totalExpense)
-                                Text(costText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                Text(costText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                 Text("Riwayat Servis", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Specs Bento Block (Full Width Specifications)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Detail Spesifikasi Kendaraan", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Tipe Kendaraan", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                Text(if (vehicle!!.type == "MOTOR") "Motor" else "Mobil", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                                Text("Nomor Plat", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                Text(if (vehicle!!.plateNumber.isNotBlank()) vehicle!!.plateNumber else "-", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Kapasitas Mesin", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                Text(if (vehicle!!.engineType.isNotBlank()) vehicle!!.engineType else "-", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                                Text("Tahun Kendaraan", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                Text(if (vehicle!!.year.isNotBlank()) vehicle!!.year else "-", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -904,7 +1174,7 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                     "Target Servis",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
@@ -914,47 +1184,57 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                     Text("Belum ada konfigurasi pengingat.", modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 16.dp)) {
-                        configs.forEach { config ->
-                            val lastService = services.firstOrNull { it.serviceType.lowercase() == config.serviceType.lowercase() }
-                            val nextTarget = (lastService?.mileageAtService ?: vehicle!!.currentMileage) + config.intervalKm
-                            val remaining = nextTarget - vehicle!!.currentMileage
-
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (remaining <= 0) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                // Render target configs in a Bento 2-column grid format
+                val targetPairs = configs.map { config ->
+                    val lastService = services.firstOrNull { it.serviceType.lowercase() == config.serviceType.lowercase() }
+                    val nextTarget = (lastService?.mileageAtService ?: vehicle!!.currentMileage) + config.intervalKm
+                    val remaining = nextTarget - vehicle!!.currentMileage
+                    config to remaining
+                }
+                
+                val chunks = targetPairs.chunked(2)
+                
+                chunks.forEach { pair ->
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            pair.forEach { (config, remaining) ->
+                                Card(
+                                    modifier = Modifier.weight(1f),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (remaining <= 0) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
                                         Text(
                                             text = config.serviceType,
                                             fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                             color = if (remaining <= 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
                                         )
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = "Interval: ${config.intervalKm} KM • Terakhir: ${lastService?.mileageAtService ?: "-"} KM",
-                                            style = MaterialTheme.typography.bodySmall,
+                                            text = "Interval: ${config.intervalKm} KM",
+                                            style = MaterialTheme.typography.labelSmall,
                                             color = if (remaining <= 0) MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.secondary
                                         )
-                                    }
-                                    Column(horizontalAlignment = Alignment.End) {
+                                        Spacer(modifier = Modifier.height(14.dp))
                                         if (remaining <= 0) {
-                                            Text("Ganti!", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                                            Text("Waktunya Ganti!", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                                         } else {
-                                            Text("$remaining KM", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                            Text("Lagi", style = MaterialTheme.typography.labelSmall)
+                                            Text("$remaining KM lagi", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                         }
                                     }
                                 }
+                            }
+                            if (pair.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
                     }
