@@ -1054,7 +1054,7 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
 
             // Odometer Bento Card with Progress Bar
             item {
-                val closestConfig = configs.map { config ->
+                val closestConfig = configs.filter { it.intervalKm > 0 }.map { config ->
                     val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
                     val targetMileage = (lastService?.mileageAtService ?: vehicle!!.startingMileage) + config.intervalKm
                     val remaining = targetMileage - vehicle!!.currentMileage
@@ -1293,7 +1293,7 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                 }
             } else {
                 // Render target configs in a Bento 2-column grid format
-                val targetPairs = configs.map { config ->
+                val targetPairs = configs.filter { it.intervalKm > 0 }.map { config ->
                     val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
                     val nextTarget = (lastService?.mileageAtService ?: vehicle!!.startingMileage) + config.intervalKm
                     val remaining = nextTarget - vehicle!!.currentMileage

@@ -77,7 +77,7 @@ class ReminderWorker(
             val configs = configDao.getConfigsForVehicle(vehicle.id).first()
             val services = serviceDao.getServiceRecordsForVehicle(vehicle.id).first()
 
-            for (config in configs) {
+            for (config in configs.filter { it.intervalKm > 0 }) {
                 val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
                 val targetMileage = (lastService?.mileageAtService ?: vehicle.startingMileage) + config.intervalKm
                 val remainingKm = targetMileage - vehicle.currentMileage
