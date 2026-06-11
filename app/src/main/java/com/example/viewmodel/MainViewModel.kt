@@ -18,9 +18,33 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     val allVehicles: StateFlow<List<Vehicle>> = repository.allVehicles
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun insertVehicle(name: String, brand: String, model: String, year: String, plateNumber: String, engineType: String, type: String, currentMileage: Int) {
+    fun insertVehicle(
+        name: String,
+        brand: String,
+        model: String,
+        year: String,
+        plateNumber: String,
+        engineType: String,
+        type: String,
+        currentMileage: Int,
+        oilIntervalKm: Int,
+        beltIntervalKm: Int
+    ) {
         viewModelScope.launch {
-            repository.insertVehicle(Vehicle(name = name, brand = brand, model = model, year = year, plateNumber = plateNumber, engineType = engineType, type = type, currentMileage = currentMileage))
+            repository.insertVehicle(
+                Vehicle(
+                    name = name,
+                    brand = brand,
+                    model = model,
+                    year = year,
+                    plateNumber = plateNumber,
+                    engineType = engineType,
+                    type = type,
+                    currentMileage = currentMileage,
+                    oilIntervalKm = oilIntervalKm,
+                    beltIntervalKm = beltIntervalKm
+                )
+            )
         }
     }
 

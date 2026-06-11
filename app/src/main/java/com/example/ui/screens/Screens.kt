@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.TwoWheeler
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -114,6 +116,10 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
     var engine by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("MOTOR") }
     var mileage by remember { mutableStateOf("") }
+    var oilInterval by remember { mutableStateOf("2000") }
+    var beltInterval by remember { mutableStateOf("24000") }
+    var hasUserEditedOil by remember { mutableStateOf(false) }
+    var hasUserEditedBelt by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -150,13 +156,21 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 FilterChip(
                     selected = type == "MOTOR",
-                    onClick = { type = "MOTOR" },
+                    onClick = { 
+                        type = "MOTOR"
+                        if (!hasUserEditedOil) oilInterval = "2000"
+                        if (!hasUserEditedBelt) beltInterval = "24000"
+                    },
                     label = { Text("Motor") },
                     leadingIcon = { Icon(Icons.Default.TwoWheeler, contentDescription = null) }
                 )
                 FilterChip(
                     selected = type == "MOBIL",
-                    onClick = { type = "MOBIL" },
+                    onClick = { 
+                        type = "MOBIL"
+                        if (!hasUserEditedOil) oilInterval = "5000"
+                        if (!hasUserEditedBelt) beltInterval = "40000"
+                    },
                     label = { Text("Mobil") },
                     leadingIcon = { Icon(Icons.Default.DirectionsCar, contentDescription = null) }
                 )
@@ -170,10 +184,43 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
                 singleLine = true
             )
 
+            OutlinedTextField(
+                value = oilInterval,
+                onValueChange = { 
+                    oilInterval = it.filter { char -> char.isDigit() }
+                    hasUserEditedOil = true
+                },
+                label = { Text("Batas Interval Ganti Oli (KM)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = beltInterval,
+                onValueChange = { 
+                    beltInterval = it.filter { char -> char.isDigit() }
+                    hasUserEditedBelt = true
+                },
+                label = { Text(if (type == "MOTOR") "Batas Interval V-Belt/CVT (KM)" else "Batas Interval Timing Belt (KM)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
             Button(
                 onClick = {
                     if (name.isNotBlank() && mileage.isNotBlank()) {
-                        viewModel.insertVehicle(name, brand, model, year, plate, engine, type, mileage.toIntOrNull() ?: 0)
+                        viewModel.insertVehicle(
+                            name = name,
+                            brand = brand,
+                            model = model,
+                            year = year,
+                            plateNumber = plate,
+                            engineType = engine,
+                            type = type,
+                            currentMileage = mileage.toIntOrNull() ?: 0,
+                            oilIntervalKm = oilInterval.toIntOrNull() ?: (if (type == "MOTOR") 2000 else 5000),
+                            beltIntervalKm = beltInterval.toIntOrNull() ?: (if (type == "MOTOR") 24000 else 40000)
+                        )
                         navController.popBackStack()
                     }
                 },
@@ -195,9 +242,82 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
     val servicesFlow = remember(vehicleId) { viewModel.getServiceRecordsForVehicle(vehicleId) }
     val services by servicesFlow.collectAsStateWithLifecycle(emptyList())
 
+    var showUpdateOdoDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var newOdoValue by remember { mutableStateOf("") }
+
+    LaunchedEffect(showUpdateOdoDialog) {
+        if (showUpdateOdoDialog && vehicle != null) {
+            newOdoValue = vehicle!!.currentMileage.toString()
+        }
+    }
+
     if (vehicle == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
+    }
+
+    if (showUpdateOdoDialog) {
+        AlertDialog(
+            onDismissRequest = { showUpdateOdoDialog = false },
+            title = { Text("Update Odometer") },
+            text = {
+                Column {
+                    Text("Masukkan kilometer kendaraan saat ini:", modifier = Modifier.padding(bottom = 8.dp))
+                    OutlinedTextField(
+                        value = newOdoValue,
+                        onValueChange = { newOdoValue = it.filter { char -> char.isDigit() } },
+                        label = { Text("Odometer (KM)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val mileage = newOdoValue.toIntOrNull()
+                        if (mileage != null) {
+                            viewModel.updateVehicleMileage(vehicle!!, mileage)
+                            showUpdateOdoDialog = false
+                        }
+                    },
+                    enabled = newOdoValue.isNotBlank()
+                ) {
+                    Text("Simpan")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUpdateOdoDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Hapus Kendaraan") },
+            text = { Text("Apakah Anda yakin ingin menghapus kendaraan '${vehicle!!.name}'? Seluruh riwayat servis kendaraan ini juga akan dihapus permanen.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteVehicle(vehicle!!)
+                        showDeleteConfirmDialog = false
+                        navController.popBackStack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Hapus")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -220,6 +340,11 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
+                },
+                actions = {
+                    IconButton(onClick = { showDeleteConfirmDialog = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Hapus Kendaraan", tint = MaterialTheme.colorScheme.error)
+                    }
                 }
             )
         },
@@ -238,12 +363,56 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
             
             val lastOilChange = services.firstOrNull { it.serviceType == "Ganti Oli" }
-            val nextTargetOil = (lastOilChange?.mileageAtService ?: vehicle!!.currentMileage) + if (vehicle!!.type == "MOTOR") 2000 else 5000
+            val nextTargetOil = (lastOilChange?.mileageAtService ?: vehicle!!.currentMileage) + vehicle!!.oilIntervalKm
             val remainingOil = nextTargetOil - vehicle!!.currentMileage
 
             val lastCvtbelt = services.firstOrNull { it.serviceType == "Ganti CVT/Belt" }
-            val nextTargetCvtbelt = (lastCvtbelt?.mileageAtService ?: vehicle!!.currentMileage) + if (vehicle!!.type == "MOTOR") 24000 else 40000
+            val nextTargetCvtbelt = (lastCvtbelt?.mileageAtService ?: vehicle!!.currentMileage) + vehicle!!.beltIntervalKm
             val remainingCvtbelt = nextTargetCvtbelt - vehicle!!.currentMileage
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (vehicle!!.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
+                                    contentDescription = vehicle!!.type,
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text("Odometer Saat Ini", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                Text("${vehicle!!.currentMileage} KM", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                        IconButton(
+                            onClick = { showUpdateOdoDialog = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Update Odometer",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
 
             item {
                 if (remainingOil <= 0) {
