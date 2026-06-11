@@ -185,9 +185,18 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
+                                val greetingText = remember {
+                                    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                                    when (hour) {
+                                        in 5..11 -> "Selamat Pagi! 🌅"
+                                        in 12..14 -> "Selamat Siang! ☀️"
+                                        in 15..18 -> "Selamat Sore! 🌇"
+                                        else -> "Selamat Malam! 🌙"
+                                    }
+                                }
                                 Text(
-                                    text = "Halo, Pengendara! 👋",
-                                    style = MaterialTheme.typography.titleMedium,
+                                    text = greetingText,
+                                    style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -1079,7 +1088,7 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                                 )
                             }
                             Column {
-                                if (vehicle!!.taxDueDateMs > 0L) {
+                                if (daysRemaining != null) {
                                     val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
                                     Text(sdf.format(java.util.Date(vehicle!!.taxDueDateMs)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = taxTextColor)
                                     val remainingText = if (daysRemaining < 0) "Telat ${kotlin.math.abs(daysRemaining)} Hari" else "$daysRemaining Hari Lagi"
