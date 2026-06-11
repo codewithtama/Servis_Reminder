@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.viewmodel.MainViewModel
+import com.example.data.Vehicle
+import com.example.data.ServiceRecord
+import com.example.data.VehicleServiceConfig
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 
