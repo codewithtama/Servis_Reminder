@@ -20,6 +20,7 @@ Aplikasi ini mengadopsi filosofi antarmuka **Bento Grid Layout** asimetris, meng
     *   **Tax Countdown Block**: Indikator hitung mundur pajak STNK dengan transisi warna latar belakang adaptif sesuai urgensi (Merah/Kuning/Hijau).
     *   **Expenses Block**: Akumulasi total pengeluaran perawatan dalam visualisasi nominal Rupiah format besar dengan ikon dompet.
     *   **Specifications Block**: Detail spesifikasi teknis seperti merek, model, CC mesin, plat nomor, tahun pembuatan, dan subtipe mesin kendaraan.
+*   **Circular Vehicle Health Indicator**: Widget visual melingkar (*Circular Progress Indicator*) yang dinamis pada halaman detail kendaraan untuk memetakan kesehatan kendaraan secara real-time.
 *   **Custom Geometric Typography**: Tipografi premium **Outfit** terintegrasi secara luring (*offline*) di dalam aset lokal untuk menjamin visual yang elegan, bersih, dan konsisten di seluruh versi OS Android.
 *   **Aesthetic Palette Colors**:
     *   **Mode Terang**: Latar belakang Slate-50 dengan aksen Charcoal/Slate-900 yang modern dan tegas.
@@ -32,7 +33,16 @@ Aplikasi ini mengadopsi filosofi antarmuka **Bento Grid Layout** asimetris, meng
 
 Aplikasi ini dibangun dengan mengedepankan akurasi matematika kalkulasi dan keandalan fungsionalitas:
 
-### 1. Klasifikasi Subtipe & Template Servis Bawaan (Default Config Templates)
+### 1. Skor Kesehatan Kendaraan (Vehicle Health Score)
+Sistem menghitung persentase kesehatan kendaraan (0% s.d. 100%) secara dinamis berdasarkan sisa jarak tempuh pada seluruh target servis aktif (`intervalKm > 0`):
+*   **Perhitungan Linear**: Kesehatan setiap item dihitung dari rasio sisa kilometer terhadap intervalnya. Jika servis baru saja diselesaikan, rasio bernilai 1.0 (sangat sehat). Jika terlewat, bernilai 0.0.
+*   **Warna Indikator Urgensi**:
+    *   **Emerald Green ($\ge 80\%$)**: Kondisi Prima.
+    *   **Amber Orange ($50\% - 79\%$)**: Butuh Perhatian.
+    *   **Crimson Red ($< 50\%$)**: Kritis / Bahaya (Waktunya Servis).
+*   **Distribusi Informasi**: Status kesehatan ditampilkan dalam bentuk badge status di garasi depan (Dashboard) dan widget Circular Progress dinamis di samping Odometer (Detail Kendaraan).
+
+### 2. Klasifikasi Subtipe & Template Servis Bawaan (Default Config Templates)
 Sistem membedakan jenis servis default secara otomatis saat kendaraan didaftarkan untuk memastikan efisiensi dan relevansi perawatan:
 *   **Motor Matic**: Oli Mesin, Oli Gardan, V-Belt (CVT), Kampas Rem, Busi, Filter Udara, Air Radiator, Minyak Rem.
 *   **Motor Gigi (Semi-Automatic)**: Oli Mesin, Rantai & Gear, Kampas Rem, Busi, Filter Udara, Air Radiator, Minyak Rem.
@@ -42,12 +52,12 @@ Sistem membedakan jenis servis default secara otomatis saat kendaraan didaftarka
 *   **Mobil Hybrid**: Oli Mesin, Filter Oli, Filter Udara, Kampas Rem (Regeneratif - lebih awet), Rotasi Ban, Air Radiator, Servis AC, Cek Sistem & Baterai Hybrid, Busi.
 *   **Mobil Listrik (EV)**: Filter AC Kabin, Cairan Gearbox EV, Kampas Rem (Regeneratif - sangat awet), Cek Kesehatan Baterai (SOH), Cairan Pendingin Baterai, Rotasi Ban, Servis AC.
 
-### 2. Smart Input Forms & Odometer O Safeguard
+### 3. Smart Input Forms & Odometer O Safeguard
 *   **Penyembunyian Field Dinamis**: Kolom input **Batas Interval Ganti Oli (KM)** disembunyikan secara otomatis ketika subtipe **Listrik (EV)** dipilih pada formulir tambah/edit kendaraan. Kolom input V-Belt/Timing Belt juga disembunyikan untuk Mobil Listrik karena tidak memiliki timing belt.
 *   **Abaikan Interval 0 KM**: Sistem secara cerdas menyaring konfigurasi dengan `intervalKm <= 0` pada sisa target servis di UI maupun background. Odometer bernilai **0 KM** tidak lagi memicu kesalahan logika atau peringatan "Terlewat 0 KM" untuk item yang dinonaktifkan.
 *   **Odometer Baseline Tracking (`startingMileage`)**: Mengunci odometer awal saat kendaraan didaftarkan sebagai baseline statis, sehingga sisa kilometer ke target berikutnya berkurang secara linear saat odometer kendaraan naik tanpa terjadi pergeseran target dinamis.
 
-### 3. Background Processing & Digital Book Export
+### 4. Background Processing & Digital Book Export
 *   **Daily Background Work Scheduler**: Menggunakan **WorkManager** Android untuk menjalankan pengecekan background berkala 24 jam sekali guna mendeteksi dan memicu notifikasi pengingat pajak STNK (≤ 30 hari) dan batas servis (≤ 200 KM).
 *   **Digital Service Book Export**: Fitur ekspor terintegrasi melalui Share Intent native Android untuk membagikan buku riwayat servis kendaraan terformat rapi dalam bentuk teks ke WhatsApp, Email, atau aplikasi chat lainnya.
 
@@ -108,4 +118,4 @@ gradlew assembleRelease
 ### Pemasangan Instan ke Emulator (Virtual Device)
 1. Buka folder output berkas APK di atas melalui Windows File Explorer.
 2. **Seret dan lepas (drag-and-drop)** berkas `app-debug.apk` atau `app-release.apk` langsung ke atas layar Emulator yang sedang aktif.
-3. Aplikasi **Servis Reminder** dengan ikon kustom premium akan terpasang secara instan dan siap dijalankan.
+3. Aplikasi **Servis Reminder** dengan ikon kustom premium akan terpasang secara instan dan siap digunakan.

@@ -38,6 +38,33 @@ import com.example.data.VehicleServiceConfig
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 
+fun calculateHealthScore(
+    vehicle: Vehicle,
+    configs: List<VehicleServiceConfig>,
+    services: List<ServiceRecord>
+): Int {
+    val activeConfigs = configs.filter { it.intervalKm > 0 }
+    if (activeConfigs.isEmpty()) return 100
+
+    var totalRatio = 0f
+    for (config in activeConfigs) {
+        val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
+        val targetMileage = (lastService?.mileageAtService ?: vehicle.startingMileage) + config.intervalKm
+        val remaining = targetMileage - vehicle.currentMileage
+        
+        val ratio = if (remaining >= config.intervalKm) {
+            1.0f
+        } else if (remaining <= 0) {
+            0.0f
+        } else {
+            remaining.toFloat() / config.intervalKm.toFloat()
+        }
+        totalRatio += ratio
+    }
+    
+    return ((totalRatio / activeConfigs.size.toFloat()) * 100f).toInt().coerceIn(0, 100)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
@@ -266,6 +293,21 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                         if (chunk.size == 1) {
                             val vehicle = chunk[0]
                             item {
+                                val configs by viewModel.getConfigsForVehicle(vehicle.id).collectAsStateWithLifecycle(emptyList())
+                                val services by viewModel.getServiceRecordsForVehicle(vehicle.id).collectAsStateWithLifecycle(emptyList())
+                                val healthScore = remember(vehicle, configs, services) {
+                                    calculateHealthScore(vehicle, configs, services)
+                                }
+                                val healthColor = when {
+                                    healthScore >= 80 -> androidx.compose.ui.graphics.Color(0xFF10B981)
+                                    healthScore >= 50 -> androidx.compose.ui.graphics.Color(0xFFF59E0B)
+                                    else -> androidx.compose.ui.graphics.Color(0xFFEF4444)
+                                }
+                                val healthText = when {
+                                    healthScore >= 80 -> "$healthScore% Prima"
+                                    healthScore >= 50 -> "$healthScore% Perhatian"
+                                    else -> "$healthScore% Kritis"
+                                }
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -275,43 +317,63 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                 ) {
-                                    Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(56.dp)
-                                                .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = if (vehicle.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
-                                                contentDescription = vehicle.type,
-                                                tint = MaterialTheme.colorScheme.onPrimary,
-                                                modifier = Modifier.size(28.dp)
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(16.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(vehicle.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                            val detailParts = listOf(vehicle.brand, vehicle.model, vehicle.plateNumber).filter { it.isNotBlank() }
-                                            if (detailParts.isNotEmpty()) {
-                                                Text(detailParts.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                                            }
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Row(
+                                        modifier = Modifier.padding(20.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(56.dp)
+                                                    .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                                 Icon(
-                                                    imageVector = Icons.Default.Speed,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(
-                                                    text = "${vehicle.currentMileage} KM",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = MaterialTheme.colorScheme.onSurface
+                                                    imageVector = if (vehicle.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
+                                                    contentDescription = vehicle.type,
+                                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                                    modifier = Modifier.size(28.dp)
                                                 )
                                             }
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Column {
+                                                Text(vehicle.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                                val detailParts = listOf(vehicle.brand, vehicle.model, vehicle.plateNumber).filter { it.isNotBlank() }
+                                                if (detailParts.isNotEmpty()) {
+                                                    Text(detailParts.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                                                }
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Speed,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(
+                                                        text = "${vehicle.currentMileage} KM",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        
+                                        Surface(
+                                            color = healthColor.copy(alpha = 0.1f),
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, healthColor.copy(alpha = 0.8f))
+                                        ) {
+                                            Text(
+                                                text = healthText,
+                                                color = healthColor,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
                                         }
                                     }
                                 }
@@ -323,6 +385,16 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     chunk.forEach { vehicle ->
+                                        val configs by viewModel.getConfigsForVehicle(vehicle.id).collectAsStateWithLifecycle(emptyList())
+                                        val services by viewModel.getServiceRecordsForVehicle(vehicle.id).collectAsStateWithLifecycle(emptyList())
+                                        val healthScore = remember(vehicle, configs, services) {
+                                            calculateHealthScore(vehicle, configs, services)
+                                        }
+                                        val healthColor = when {
+                                            healthScore >= 80 -> androidx.compose.ui.graphics.Color(0xFF10B981)
+                                            healthScore >= 50 -> androidx.compose.ui.graphics.Color(0xFFF59E0B)
+                                            else -> androidx.compose.ui.graphics.Color(0xFFEF4444)
+                                        }
                                         Card(
                                             modifier = Modifier
                                                 .weight(1f)
@@ -337,18 +409,38 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                                                 modifier = Modifier.padding(16.dp).fillMaxSize(),
                                                 verticalArrangement = Arrangement.SpaceBetween
                                             ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(44.dp)
-                                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), androidx.compose.foundation.shape.CircleShape),
-                                                    contentAlignment = Alignment.Center
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Icon(
-                                                        imageVector = if (vehicle.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
-                                                        contentDescription = vehicle.type,
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.size(22.dp)
-                                                    )
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(44.dp)
+                                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), androidx.compose.foundation.shape.CircleShape),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = if (vehicle.type == "MOTOR") Icons.Default.TwoWheeler else Icons.Default.DirectionsCar,
+                                                            contentDescription = vehicle.type,
+                                                            tint = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.size(22.dp)
+                                                        )
+                                                    }
+                                                    
+                                                    Surface(
+                                                        color = healthColor.copy(alpha = 0.1f),
+                                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                                                        border = androidx.compose.foundation.BorderStroke(1.dp, healthColor.copy(alpha = 0.7f))
+                                                    ) {
+                                                        Text(
+                                                            text = "$healthScore%",
+                                                            color = healthColor,
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        )
+                                                    }
                                                 }
                                                 Column {
                                                     Text(
@@ -636,6 +728,10 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
 
     val configsFlow = remember(vehicleId) { viewModel.getConfigsForVehicle(vehicleId) }
     val configs by configsFlow.collectAsStateWithLifecycle(emptyList())
+
+    val healthScore = remember(vehicle, configs, services) {
+        if (vehicle != null) calculateHealthScore(vehicle!!, configs, services) else 100
+    }
 
     var showUpdateOdoDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
@@ -1080,34 +1176,82 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
-                                        .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), androidx.compose.foundation.shape.CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Speed,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(24.dp)
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(16.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text("Odometer Saat Ini", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                                    Text("${vehicle!!.currentMileage} KM", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("Odometer", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("${vehicle!!.currentMileage} KM", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        IconButton(
+                                            onClick = { showUpdateOdoDialog = true },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Edit,
+                                                contentDescription = "Update Odometer",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                            IconButton(
-                                onClick = { showUpdateOdoDialog = true }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Update Odometer",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
+                            
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val healthColor = when {
+                                    healthScore >= 80 -> androidx.compose.ui.graphics.Color(0xFF10B981)
+                                    healthScore >= 50 -> androidx.compose.ui.graphics.Color(0xFFF59E0B)
+                                    else -> androidx.compose.ui.graphics.Color(0xFFEF4444)
+                                }
+                                val healthStatus = when {
+                                    healthScore >= 80 -> "Prima"
+                                    healthScore >= 50 -> "Perhatian"
+                                    else -> "Kritis"
+                                }
+                                
+                                Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(end = 12.dp)) {
+                                    Text("Kondisi Fisik", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                    Text(healthStatus, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = healthColor)
+                                }
+                                
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        progress = { 1.0f },
+                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                                        strokeWidth = 5.dp,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    CircularProgressIndicator(
+                                        progress = { healthScore.toFloat() / 100f },
+                                        color = healthColor,
+                                        strokeWidth = 5.dp,
+                                        modifier = Modifier.fillMaxSize(),
+                                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                                    )
+                                    Text(
+                                        text = "$healthScore%",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
                         }
                         
