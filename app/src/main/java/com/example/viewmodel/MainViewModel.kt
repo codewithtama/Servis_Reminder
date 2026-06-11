@@ -555,6 +555,12 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.worker.ReminderWorker>().build()
         androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
     }
+
+    fun nukeDatabase() {
+        viewModelScope.launch {
+            repository.deleteAllVehicles()
+        }
+    }
 }
 
 class MainViewModelFactory(private val repository: AppRepository) : ViewModelProvider.Factory {

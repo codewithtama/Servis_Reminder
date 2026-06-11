@@ -17,6 +17,8 @@ class AppRepository(
 
     suspend fun deleteVehicle(vehicle: Vehicle) = vehicleDao.deleteVehicle(vehicle)
 
+    suspend fun deleteAllVehicles() = vehicleDao.deleteAllVehicles()
+
     fun getServiceRecordsForVehicle(vehicleId: Int): Flow<List<ServiceRecord>> =
         serviceDao.getServiceRecordsForVehicle(vehicleId)
 

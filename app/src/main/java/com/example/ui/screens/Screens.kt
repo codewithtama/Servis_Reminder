@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,6 +71,20 @@ fun calculateHealthScore(
 fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
     val vehicles by viewModel.allVehicles.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPreferences = remember { context.getSharedPreferences("servis_reminder_prefs", android.content.Context.MODE_PRIVATE) }
+    var ownerName by remember { mutableStateOf(sharedPreferences.getString("owner_name", "") ?: "") }
+
+    DisposableEffect(Unit) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "owner_name") {
+                ownerName = sharedPreferences.getString("owner_name", "") ?: ""
+            }
+        }
+        sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {
+            sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
 
     var hasNotificationPermission by remember {
         mutableStateOf(
@@ -107,11 +122,11 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                 ),
                 actions = {
                     IconButton(
-                        onClick = { viewModel.triggerOneTimeReminderCheck(context) }
+                        onClick = { navController.navigate("settings") }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Uji Notifikasi",
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Pengaturan",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -212,13 +227,24 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
-                                val greetingText = remember {
+                                val greetingText = remember(ownerName) {
                                     val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-                                    when (hour) {
-                                        in 5..11 -> "Selamat Pagi! 🌅"
-                                        in 12..14 -> "Selamat Siang! ☀️"
-                                        in 15..18 -> "Selamat Sore! 🌇"
-                                        else -> "Selamat Malam! 🌙"
+                                    val prefix = when (hour) {
+                                        in 5..11 -> "Selamat Pagi"
+                                        in 12..14 -> "Selamat Siang"
+                                        in 15..18 -> "Selamat Sore"
+                                        else -> "Selamat Malam"
+                                    }
+                                    val emoji = when (hour) {
+                                        in 5..11 -> "🌅"
+                                        in 12..14 -> "☀️"
+                                        in 15..18 -> "🌇"
+                                        else -> "🌙"
+                                    }
+                                    if (ownerName.isNotBlank()) {
+                                        "$prefix, $ownerName! $emoji"
+                                    } else {
+                                        "$prefix! $emoji"
                                     }
                                 }
                                 Text(
@@ -2035,3 +2061,302 @@ fun EditVehicleScreen(navController: NavController, viewModel: MainViewModel, ve
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPreferences = remember { context.getSharedPreferences("servis_reminder_prefs", android.content.Context.MODE_PRIVATE) }
+    
+    var ownerNameInput by remember { mutableStateOf(sharedPreferences.getString("owner_name", "") ?: "") }
+    var notificationsEnabled by remember { mutableStateOf(sharedPreferences.getBoolean("notifications_enabled", true)) }
+    var showNukeDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Pengaturan", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // SECTION 1: PROFIL PEMILIK
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Profil Pemilik",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = ownerNameInput,
+                        onValueChange = { ownerNameInput = it },
+                        label = { Text("Nama Pemilik Garasi") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("Masukkan nama Anda...") }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            sharedPreferences.edit().putString("owner_name", ownerNameInput.trim()).apply()
+                            android.widget.Toast.makeText(context, "Nama berhasil disimpan!", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.align(Alignment.End),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Simpan Nama")
+                    }
+                }
+            }
+
+            // SECTION 2: NOTIFIKASI
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Notifikasi & Pengingat",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Pengingat Servis Harian",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Dapatkan pemberitahuan otomatis jika kendaraan memerlukan servis.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = notificationsEnabled,
+                            onCheckedChange = { isChecked ->
+                                notificationsEnabled = isChecked
+                                sharedPreferences.edit().putBoolean("notifications_enabled", isChecked).apply()
+                                if (isChecked) {
+                                    android.widget.Toast.makeText(context, "Pengingat diaktifkan", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    android.widget.Toast.makeText(context, "Pengingat dinonaktifkan", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Uji Coba Notifikasi",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Kirim notifikasi tes untuk memastikan sistem notifikasi bekerja.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { 
+                                viewModel.triggerOneTimeReminderCheck(context)
+                                android.widget.Toast.makeText(context, "Notifikasi uji coba dikirim!", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Tes")
+                        }
+                    }
+                }
+            }
+
+            // SECTION 3: PEMELIHARAAN DATA (RESET DATA)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = "Zona Bahaya",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Menghapus semua data kendaraan, konfigurasi servis, dan riwayat servis secara permanen. Aksi ini tidak dapat dibatalkan.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { showNukeDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Hapus Semua Data")
+                    }
+                }
+            }
+
+            // SECTION 4: INFO APLIKASI
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(MaterialTheme.colorScheme.primaryContainer, shape = androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Build,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Servis Reminder",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Versi 1.2.0-stable",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Aplikasi pintar untuk melacak riwayat perawatan, memantau odometer, dan menjaga kesehatan armada kendaraan Anda.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "© 2026 Servis Reminder Team. All Rights Reserved.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    }
+
+    if (showNukeDialog) {
+        AlertDialog(
+            onDismissRequest = { showNukeDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Text("Konfirmasi Hapus Data")
+                }
+            },
+            text = {
+                Text("Apakah Anda benar-benar yakin ingin menghapus semua data kendaraan beserta riwayat servis? Tindakan ini bersifat permanen.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.nukeDatabase()
+                        showNukeDialog = false
+                        android.widget.Toast.makeText(context, "Semua data berhasil dibersihkan!", android.widget.Toast.LENGTH_LONG).show()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Ya, Hapus Semua")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNukeDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+}
+

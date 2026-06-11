@@ -15,6 +15,7 @@ import com.example.ui.screens.AddVehicleScreen
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.VehicleDetailScreen
 import com.example.ui.screens.EditVehicleScreen
+import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.MainViewModel
 import com.example.viewmodel.MainViewModelFactory
@@ -51,6 +52,9 @@ class MainActivity : ComponentActivity() {
                 NavHost(navController = navController, startDestination = "dashboard") {
                     composable("dashboard") {
                         DashboardScreen(navController, viewModel)
+                    }
+                    composable("settings") {
+                        SettingsScreen(navController, viewModel)
                     }
                     composable("add_vehicle") {
                         AddVehicleScreen(navController, viewModel)
