@@ -997,12 +997,7 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
             item {
                 val closestConfig = configs.map { config ->
                     val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
-                    val lastServiceMileage = lastService?.mileageAtService
-                    val targetMileage = if (lastServiceMileage != null) {
-                        lastServiceMileage + config.intervalKm
-                    } else {
-                        if (config.intervalKm <= 0) vehicle!!.currentMileage else ((vehicle!!.currentMileage / config.intervalKm) + 1) * config.intervalKm
-                    }
+                    val targetMileage = (lastService?.mileageAtService ?: vehicle!!.startingMileage) + config.intervalKm
                     val remaining = targetMileage - vehicle!!.currentMileage
                     config to remaining
                 }.minByOrNull { it.second }
@@ -1239,12 +1234,7 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                 // Render target configs in a Bento 2-column grid format
                 val targetPairs = configs.map { config ->
                     val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
-                    val lastServiceMileage = lastService?.mileageAtService
-                    val nextTarget = if (lastServiceMileage != null) {
-                        lastServiceMileage + config.intervalKm
-                    } else {
-                        if (config.intervalKm <= 0) vehicle!!.currentMileage else ((vehicle!!.currentMileage / config.intervalKm) + 1) * config.intervalKm
-                    }
+                    val nextTarget = (lastService?.mileageAtService ?: vehicle!!.startingMileage) + config.intervalKm
                     val remaining = nextTarget - vehicle!!.currentMileage
                     config to remaining
                 }

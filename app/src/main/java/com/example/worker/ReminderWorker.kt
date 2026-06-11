@@ -79,12 +79,7 @@ class ReminderWorker(
 
             for (config in configs) {
                 val lastService = services.filter { it.serviceType.lowercase() == config.serviceType.lowercase() }.maxByOrNull { it.mileageAtService }
-                val lastServiceMileage = lastService?.mileageAtService
-                val targetMileage = if (lastServiceMileage != null) {
-                    lastServiceMileage + config.intervalKm
-                } else {
-                    if (config.intervalKm <= 0) vehicle.currentMileage else ((vehicle.currentMileage / config.intervalKm) + 1) * config.intervalKm
-                }
+                val targetMileage = (lastService?.mileageAtService ?: vehicle.startingMileage) + config.intervalKm
                 val remainingKm = targetMileage - vehicle.currentMileage
 
                 if (remainingKm <= 200) {

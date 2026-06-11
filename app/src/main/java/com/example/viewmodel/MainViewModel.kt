@@ -43,7 +43,8 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
                     engineType = engineType,
                     type = type,
                     currentMileage = currentMileage,
-                    taxDueDateMs = taxDueDateMs
+                    taxDueDateMs = taxDueDateMs,
+                    startingMileage = currentMileage
                 )
             ).toInt()
 
