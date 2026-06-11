@@ -402,6 +402,7 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
     var plate by remember { mutableStateOf("") }
     var engine by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("MOTOR") }
+    var subType by remember { mutableStateOf("MATIC") }
     var mileage by remember { mutableStateOf("") }
     var oilInterval by remember { mutableStateOf("2000") }
     var beltInterval by remember { mutableStateOf("24000") }
@@ -455,7 +456,7 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
                 OutlinedTextField(value = plate, onValueChange = { plate = it }, label = { Text("Nomor Plat") }, modifier = Modifier.weight(1f), singleLine = true)
             }
             
-            OutlinedTextField(value = engine, onValueChange = { engine = it }, label = { Text("Kapasitas Mesin (ex: 160cc)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(value = engine, onValueChange = { engine = it }, label = { Text("Kapasitas Mesin (ex: 160cc / Listrik)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             
             Text("Jenis Kendaraan", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -463,6 +464,7 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
                     selected = type == "MOTOR",
                     onClick = { 
                         type = "MOTOR"
+                        subType = "MATIC"
                         if (!hasUserEditedOil) oilInterval = "2000"
                         if (!hasUserEditedBelt) beltInterval = "24000"
                     },
@@ -473,12 +475,55 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
                     selected = type == "MOBIL",
                     onClick = { 
                         type = "MOBIL"
+                        subType = "BENSIN"
                         if (!hasUserEditedOil) oilInterval = "5000"
                         if (!hasUserEditedBelt) beltInterval = "40000"
                     },
                     label = { Text("Mobil") },
                     leadingIcon = { Icon(Icons.Default.DirectionsCar, contentDescription = null) }
                 )
+            }
+
+            Text("Subtipe Kendaraan", style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState())
+            ) {
+                if (type == "MOTOR") {
+                    listOf("MATIC", "GIGI", "KOPLING", "LISTRIK").forEach { sub ->
+                        FilterChip(
+                            selected = subType == sub,
+                            onClick = {
+                                subType = sub
+                                if (sub == "LISTRIK") {
+                                    oilInterval = "0"
+                                    if (!hasUserEditedBelt) beltInterval = "15000"
+                                } else {
+                                    if (!hasUserEditedOil) oilInterval = "2000"
+                                    if (!hasUserEditedBelt) beltInterval = "24000"
+                                }
+                            },
+                            label = { Text(sub.lowercase().replaceFirstChar { it.uppercase() }) }
+                        )
+                    }
+                } else {
+                    listOf("BENSIN", "HYBRID", "LISTRIK").forEach { sub ->
+                        FilterChip(
+                            selected = subType == sub,
+                            onClick = {
+                                subType = sub
+                                if (sub == "LISTRIK") {
+                                    oilInterval = "0"
+                                    if (!hasUserEditedBelt) beltInterval = "0"
+                                } else {
+                                    if (!hasUserEditedOil) oilInterval = "5000"
+                                    if (!hasUserEditedBelt) beltInterval = "40000"
+                                }
+                            },
+                            label = { Text(if (sub == "BENSIN") "Bensin/Diesel" else sub.lowercase().replaceFirstChar { it.uppercase() }) }
+                        )
+                    }
+                }
             }
 
             OutlinedTextField(
@@ -518,27 +563,38 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
                 )
             }
 
-            OutlinedTextField(
-                value = oilInterval,
-                onValueChange = { 
-                    oilInterval = it.filter { char -> char.isDigit() }
-                    hasUserEditedOil = true
-                },
-                label = { Text("Batas Interval Ganti Oli (KM)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+            if (subType != "LISTRIK") {
+                OutlinedTextField(
+                    value = oilInterval,
+                    onValueChange = { 
+                        oilInterval = it.filter { char -> char.isDigit() }
+                        hasUserEditedOil = true
+                    },
+                    label = { Text("Batas Interval Ganti Oli (KM)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
 
-            OutlinedTextField(
-                value = beltInterval,
-                onValueChange = { 
-                    beltInterval = it.filter { char -> char.isDigit() }
-                    hasUserEditedBelt = true
-                },
-                label = { Text(if (type == "MOTOR") "Batas Interval V-Belt/CVT (KM)" else "Batas Interval Timing Belt (KM)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+            val showBeltField = !(type == "MOBIL" && subType == "LISTRIK")
+            if (showBeltField) {
+                val beltLabel = when {
+                    type == "MOTOR" && subType == "LISTRIK" -> "Batas Interval Cek Drive Belt/Rantai (KM)"
+                    type == "MOTOR" && (subType == "GIGI" || subType == "KOPLING") -> "Batas Interval Rantai & Gear (KM)"
+                    type == "MOTOR" -> "Batas Interval V-Belt (CVT) (KM)"
+                    else -> "Batas Interval Timing Belt (KM)"
+                }
+                OutlinedTextField(
+                    value = beltInterval,
+                    onValueChange = { 
+                        beltInterval = it.filter { char -> char.isDigit() }
+                        hasUserEditedBelt = true
+                    },
+                    label = { Text(beltLabel) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
 
             Button(
                 onClick = {
@@ -553,8 +609,9 @@ fun AddVehicleScreen(navController: NavController, viewModel: MainViewModel) {
                             type = type,
                             currentMileage = mileage.toIntOrNull() ?: 0,
                             taxDueDateMs = taxDateMs,
-                            oilIntervalKm = oilInterval.toIntOrNull() ?: (if (type == "MOTOR") 2000 else 5000),
-                            beltIntervalKm = beltInterval.toIntOrNull() ?: (if (type == "MOTOR") 24000 else 40000)
+                            oilIntervalKm = if (subType == "LISTRIK") 0 else (oilInterval.toIntOrNull() ?: (if (type == "MOTOR") 2000 else 5000)),
+                            beltIntervalKm = if (type == "MOBIL" && subType == "LISTRIK") 0 else (beltInterval.toIntOrNull() ?: (if (type == "MOTOR") 24000 else 40000)),
+                            subType = subType
                         )
                         navController.popBackStack()
                     }
@@ -904,7 +961,9 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                 title = { 
                     Column {
                         Text(vehicle!!.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        val detailParts = listOf(vehicle!!.brand, vehicle!!.model, vehicle!!.plateNumber).filter { it.isNotBlank() }
+                        val subTypeStr = vehicle!!.subType.lowercase().replaceFirstChar { it.uppercase() }
+                        val typeStr = if (vehicle!!.type == "MOTOR") "Motor" else "Mobil"
+                        val detailParts = listOf("$typeStr $subTypeStr", vehicle!!.brand, vehicle!!.model, vehicle!!.plateNumber).filter { it.isNotBlank() }
                         if (detailParts.isNotEmpty()) {
                             Text(detailParts.joinToString(" • "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                         }
@@ -1193,7 +1252,9 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text("Tipe Kendaraan", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                                Text(if (vehicle!!.type == "MOTOR") "Motor" else "Mobil", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                val typeLabel = if (vehicle!!.type == "MOTOR") "Motor" else "Mobil"
+                                val subLabel = vehicle!!.subType.lowercase().replaceFirstChar { it.uppercase() }
+                                Text("$typeLabel • $subLabel", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                             }
                             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                                 Text("Nomor Plat", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
@@ -1646,6 +1707,7 @@ fun EditVehicleScreen(navController: NavController, viewModel: MainViewModel, ve
     var plate by remember { mutableStateOf("") }
     var engine by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("MOTOR") }
+    var subType by remember { mutableStateOf("MATIC") }
     var mileage by remember { mutableStateOf("") }
     var taxDateMs by remember { mutableStateOf(0L) }
 
@@ -1658,6 +1720,7 @@ fun EditVehicleScreen(navController: NavController, viewModel: MainViewModel, ve
             plate = vehicle!!.plateNumber
             engine = vehicle!!.engineType
             type = vehicle!!.type
+            subType = vehicle!!.subType
             mileage = vehicle!!.currentMileage.toString()
             taxDateMs = vehicle!!.taxDueDateMs
         }
@@ -1720,16 +1783,46 @@ fun EditVehicleScreen(navController: NavController, viewModel: MainViewModel, ve
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 FilterChip(
                     selected = type == "MOTOR",
-                    onClick = { type = "MOTOR" },
+                    onClick = { 
+                        type = "MOTOR"
+                        subType = "MATIC"
+                    },
                     label = { Text("Motor") },
                     leadingIcon = { Icon(Icons.Default.TwoWheeler, contentDescription = null) }
                 )
                 FilterChip(
                     selected = type == "MOBIL",
-                    onClick = { type = "MOBIL" },
+                    onClick = { 
+                        type = "MOBIL"
+                        subType = "BENSIN"
+                    },
                     label = { Text("Mobil") },
                     leadingIcon = { Icon(Icons.Default.DirectionsCar, contentDescription = null) }
                 )
+            }
+
+            Text("Subtipe Kendaraan", style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState())
+            ) {
+                if (type == "MOTOR") {
+                    listOf("MATIC", "GIGI", "KOPLING", "LISTRIK").forEach { sub ->
+                        FilterChip(
+                            selected = subType == sub,
+                            onClick = { subType = sub },
+                            label = { Text(sub.lowercase().replaceFirstChar { it.uppercase() }) }
+                        )
+                    }
+                } else {
+                    listOf("BENSIN", "HYBRID", "LISTRIK").forEach { sub ->
+                        FilterChip(
+                            selected = subType == sub,
+                            onClick = { subType = sub },
+                            label = { Text(if (sub == "BENSIN") "Bensin/Diesel" else sub.lowercase().replaceFirstChar { it.uppercase() }) }
+                        )
+                    }
+                }
             }
 
             OutlinedTextField(
@@ -1781,6 +1874,7 @@ fun EditVehicleScreen(navController: NavController, viewModel: MainViewModel, ve
                                 plateNumber = plate,
                                 engineType = engine,
                                 type = type,
+                                subType = subType,
                                 currentMileage = mileage.toIntOrNull() ?: 0,
                                 taxDueDateMs = taxDateMs
                             )

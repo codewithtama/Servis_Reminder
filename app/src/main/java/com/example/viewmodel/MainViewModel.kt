@@ -30,7 +30,8 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         currentMileage: Int,
         taxDueDateMs: Long,
         oilIntervalKm: Int,
-        beltIntervalKm: Int
+        beltIntervalKm: Int,
+        subType: String
     ) {
         viewModelScope.launch {
             val vehicleId = repository.insertVehicle(
@@ -44,139 +45,417 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
                     type = type,
                     currentMileage = currentMileage,
                     taxDueDateMs = taxDueDateMs,
-                    startingMileage = currentMileage
+                    startingMileage = currentMileage,
+                    subType = subType
                 )
             ).toInt()
 
-            // Insert default configurations based on vehicle type
+            // Insert default configurations based on vehicle type and subType
             if (type == "MOTOR") {
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Oli Mesin",
-                        intervalKm = oilIntervalKm
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Oli Gardan",
-                        intervalKm = 4000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti CVT / Rantai",
-                        intervalKm = beltIntervalKm
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Kampas Rem",
-                        intervalKm = 8000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Busi",
-                        intervalKm = 8000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Filter Udara",
-                        intervalKm = 12000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Air Radiator",
-                        intervalKm = 12000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Minyak Rem",
-                        intervalKm = 20000
-                    )
-                )
-            } else {
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Oli Mesin",
-                        intervalKm = oilIntervalKm
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Filter Oli",
-                        intervalKm = oilIntervalKm * 2
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Filter Udara",
-                        intervalKm = 20000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Timing Belt",
-                        intervalKm = beltIntervalKm
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Kampas Rem",
-                        intervalKm = 20000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Rotasi Ban",
-                        intervalKm = 10000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Oli Transmisi",
-                        intervalKm = 40000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Minyak Rem",
-                        intervalKm = 40000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Ganti Air Radiator",
-                        intervalKm = 40000
-                    )
-                )
-                repository.insertConfig(
-                    VehicleServiceConfig(
-                        vehicleId = vehicleId,
-                        serviceType = "Servis AC Mobil",
-                        intervalKm = 20000
-                    )
-                )
+                when (subType) {
+                    "LISTRIK" -> {
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Cek Drive Belt/Rantai",
+                                intervalKm = beltIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Oli Gearbox EV",
+                                intervalKm = 10000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Kampas Rem",
+                                intervalKm = 10000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Minyak Rem",
+                                intervalKm = 20000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Cek Kesehatan Baterai (SOH)",
+                                intervalKm = 5000
+                            )
+                        )
+                    }
+                    "GIGI" -> {
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Oli Mesin",
+                                intervalKm = oilIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Rantai & Gear",
+                                intervalKm = beltIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Kampas Rem",
+                                intervalKm = 8000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Busi",
+                                intervalKm = 8000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Filter Udara",
+                                intervalKm = 12000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Air Radiator",
+                                intervalKm = 12000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Minyak Rem",
+                                intervalKm = 20000
+                            )
+                        )
+                    }
+                    "KOPLING" -> {
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Oli Mesin",
+                                intervalKm = oilIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Kampas Kopling",
+                                intervalKm = 20000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Rantai & Gear",
+                                intervalKm = beltIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Kampas Rem",
+                                intervalKm = 8000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Busi",
+                                intervalKm = 8000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Filter Udara",
+                                intervalKm = 12000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Air Radiator",
+                                intervalKm = 12000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Minyak Rem",
+                                intervalKm = 20000
+                            )
+                        )
+                    }
+                    else -> { // MATIC
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Oli Mesin",
+                                intervalKm = oilIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Oli Gardan",
+                                intervalKm = 4000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti V-Belt (CVT)",
+                                intervalKm = beltIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Kampas Rem",
+                                intervalKm = 8000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Busi",
+                                intervalKm = 8000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Filter Udara",
+                                intervalKm = 12000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Air Radiator",
+                                intervalKm = 12000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Minyak Rem",
+                                intervalKm = 20000
+                            )
+                        )
+                    }
+                }
+            } else { // MOBIL
+                when (subType) {
+                    "LISTRIK" -> {
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Filter AC Kabin",
+                                intervalKm = 15000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Cairan Gearbox EV",
+                                intervalKm = 40000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Kampas Rem",
+                                intervalKm = 50000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Cek Kesehatan Baterai (SOH)",
+                                intervalKm = 20000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Cairan Pendingin Baterai",
+                                intervalKm = 40000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Rotasi Ban",
+                                intervalKm = 10000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Servis AC Mobil",
+                                intervalKm = 20000
+                            )
+                        )
+                    }
+                    "HYBRID" -> {
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Oli Mesin",
+                                intervalKm = oilIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Filter Oli",
+                                intervalKm = oilIntervalKm * 2
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Filter Udara",
+                                intervalKm = 20000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Kampas Rem",
+                                intervalKm = 40000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Rotasi Ban",
+                                intervalKm = 10000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Air Radiator",
+                                intervalKm = 40000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Servis AC Mobil",
+                                intervalKm = 20000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Cek Sistem & Baterai Hybrid",
+                                intervalKm = 10000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Busi",
+                                intervalKm = 40000
+                            )
+                        )
+                    }
+                    else -> { // BENSIN / DIESEL
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Oli Mesin",
+                                intervalKm = oilIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Filter Oli",
+                                intervalKm = oilIntervalKm * 2
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Filter Udara",
+                                intervalKm = 20000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Timing Belt",
+                                intervalKm = beltIntervalKm
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Kampas Rem",
+                                intervalKm = 20000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Rotasi Ban",
+                                intervalKm = 10000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Oli Transmisi",
+                                intervalKm = 40000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Minyak Rem",
+                                intervalKm = 40000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Air Radiator",
+                                intervalKm = 40000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Servis AC Mobil",
+                                intervalKm = 20000
+                            )
+                        )
+                        repository.insertConfig(
+                            VehicleServiceConfig(
+                                vehicleId = vehicleId,
+                                serviceType = "Ganti Busi",
+                                intervalKm = 40000
+                            )
+                        )
+                    }
+                }
             }
         }
     }

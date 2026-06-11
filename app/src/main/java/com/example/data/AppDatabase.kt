@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Vehicle::class, ServiceRecord::class, VehicleServiceConfig::class], version = 5, exportSchema = false)
+@Database(entities = [Vehicle::class, ServiceRecord::class, VehicleServiceConfig::class], version = 6, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
     abstract fun serviceDao(): ServiceDao
