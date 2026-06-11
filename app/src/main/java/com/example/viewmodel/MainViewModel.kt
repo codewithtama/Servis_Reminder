@@ -552,7 +552,9 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     }
 
     fun triggerOneTimeReminderCheck(context: android.content.Context) {
-        val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.worker.ReminderWorker>().build()
+        val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.worker.ReminderWorker>()
+            .setInputData(androidx.work.workDataOf("is_test" to true))
+            .build()
         androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
     }
 

@@ -32,9 +32,27 @@ class ReminderWorker(
         val configDao = database.serviceConfigDao()
         val serviceDao = database.serviceDao()
 
-        val vehicles = vehicleDao.getAllVehicles().first()
+        val sharedPrefs = applicationContext.getSharedPreferences("servis_reminder_prefs", Context.MODE_PRIVATE)
+        val notificationsEnabled = sharedPrefs.getBoolean("notifications_enabled", true)
+        val isTest = inputData.getBoolean("is_test", false)
+
+        // Jika notifikasi dimatikan oleh pengguna dan bukan pengujian manual
+        if (!notificationsEnabled && !isTest) {
+            return Result.success()
+        }
 
         createNotificationChannel()
+
+        if (isTest) {
+            showNotification(
+                id = 999,
+                title = "Uji Coba Notifikasi 🛠️",
+                message = "Halo! Ini adalah notifikasi pengujian dari Servis Reminder. Sistem notifikasi Anda berjalan dengan lancar."
+            )
+            return Result.success()
+        }
+
+        val vehicles = vehicleDao.getAllVehicles().first()
 
         var notificationId = 100
 
@@ -123,7 +141,7 @@ class ReminderWorker(
         )
 
         val builder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.example.R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
