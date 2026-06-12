@@ -28,6 +28,9 @@ jobs:
     - name: Grant Execute Permission for Gradlew
       run: chmod +x gradlew
 
+    - name: Decode Debug Keystore
+      run: base64 --decode debug.keystore.base64 > debug.keystore
+
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
