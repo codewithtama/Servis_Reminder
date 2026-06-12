@@ -24,6 +24,12 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.worker.ReminderWorker
 import java.util.concurrent.TimeUnit
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,7 +51,28 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            val sharedPreferences = remember { getSharedPreferences("servis_reminder_prefs", android.content.Context.MODE_PRIVATE) }
+            var appThemeSetting by remember { mutableStateOf(sharedPreferences.getString("app_theme", "system") ?: "system") }
+
+            DisposableEffect(Unit) {
+                val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                    if (key == "app_theme") {
+                        appThemeSetting = sharedPreferences.getString("app_theme", "system") ?: "system"
+                    }
+                }
+                sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
+                onDispose {
+                    sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener)
+                }
+            }
+
+            val darkTheme = when (appThemeSetting) {
+                "dark" -> true
+                "light" -> false
+                else -> isSystemInDarkTheme()
+            }
+
+            MyApplicationTheme(darkTheme = darkTheme) {
                 val viewModel: MainViewModel = viewModel(factory = factory)
                 val navController = rememberNavController()
 
