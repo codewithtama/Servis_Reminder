@@ -46,8 +46,8 @@ class ReminderWorker(
         if (isTest) {
             showNotification(
                 id = 999,
-                title = "Uji Coba Notifikasi 🛠️",
-                message = "Halo! Ini adalah notifikasi pengujian dari Servis Reminder. Sistem notifikasi Anda berjalan dengan lancar."
+                title = "Tes Notifikasi Berhasil! 🛠️",
+                message = "Halo! Ini adalah notifikasi tes dari Servis Reminder. Notifikasi di HP kamu udah berfungsi dengan baik."
             )
             return Result.success()
         }
@@ -77,11 +77,11 @@ class ReminderWorker(
 
                 if (daysRemaining <= 30) {
                     val message = if (daysRemaining < 0) {
-                        "Pajak STNK untuk ${vehicle.name} telah telat ${abs(daysRemaining)} hari! Segera lakukan pembayaran."
+                        "Pajak STNK ${vehicle.name} udah telat ${abs(daysRemaining)} hari nih! Yuk, buruan bayar."
                     } else if (daysRemaining == 0L) {
-                        "Pajak STNK untuk ${vehicle.name} jatuh tempo HARI INI! Segera bayar."
+                        "Pajak STNK ${vehicle.name} jatuh tempo HARI INI lho! Jangan lupa dibayar ya."
                     } else {
-                        "Pajak STNK untuk ${vehicle.name} akan jatuh tempo dalam $daysRemaining hari lagi."
+                        "Pajak STNK ${vehicle.name} bakal jatuh tempo $daysRemaining hari lagi."
                     }
                     showNotification(
                         id = notificationId++,
@@ -102,9 +102,9 @@ class ReminderWorker(
 
                 if (remainingKm <= 200) {
                     val message = if (remainingKm <= 0) {
-                        "Waktunya servis ${config.serviceType} untuk ${vehicle.name}! Sudah terlewat ${abs(remainingKm)} KM."
+                        "Waktunya servis ${config.serviceType} buat ${vehicle.name}! Udah kelewat ${abs(remainingKm)} KM."
                     } else {
-                        "Servis ${config.serviceType} untuk ${vehicle.name} kurang dari $remainingKm KM lagi."
+                        "Servis ${config.serviceType} buat ${vehicle.name} tinggal $remainingKm KM lagi."
                     }
                     showNotification(
                         id = notificationId++,

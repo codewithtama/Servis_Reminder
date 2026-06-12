@@ -194,7 +194,7 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
 
             if (vehicles.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Belum ada kendaraan. Tambahkan sekarang!", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Garasi kamu masih kosong nih. Yuk, tambah kendaraan pertama kamu!", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 val bentoChunks = remember(vehicles) {
@@ -257,7 +257,7 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Pantau kondisi kendaraan kesayangan Anda agar tetap prima.",
+                                    text = "Pantau terus motor & mobil kesayangan biar performanya tetap mantap.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                                 )
@@ -332,9 +332,9 @@ fun DashboardScreen(navController: NavController, viewModel: MainViewModel) {
                                     else -> androidx.compose.ui.graphics.Color(0xFFEF4444)
                                 }
                                 val healthText = when {
-                                    healthScore >= 80 -> "$healthScore% Prima"
-                                    healthScore >= 50 -> "$healthScore% Perhatian"
-                                    else -> "$healthScore% Kritis"
+                                    healthScore >= 80 -> "$healthScore% Aman"
+                                    healthScore >= 50 -> "$healthScore% Cek Dulu"
+                                    else -> "$healthScore% Butuh Servis!"
                                 }
                                 Card(
                                     modifier = Modifier
@@ -1240,19 +1240,19 @@ fun VehicleDetailScreen(navController: NavController, viewModel: MainViewModel, 
                             }
                             
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                val healthColor = when {
+                        val healthColor = when {
                                     healthScore >= 80 -> androidx.compose.ui.graphics.Color(0xFF10B981)
                                     healthScore >= 50 -> androidx.compose.ui.graphics.Color(0xFFF59E0B)
                                     else -> androidx.compose.ui.graphics.Color(0xFFEF4444)
                                 }
                                 val healthStatus = when {
-                                    healthScore >= 80 -> "Prima"
-                                    healthScore >= 50 -> "Perhatian"
-                                    else -> "Kritis"
+                                    healthScore >= 80 -> "Aman"
+                                    healthScore >= 50 -> "Kurang Fit"
+                                    else -> "Waktunya Servis!"
                                 }
                                 
                                 Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(end = 12.dp)) {
-                                    Text("Kondisi Fisik", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                    Text("Kondisi Kendaraan", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                                     Text(healthStatus, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = healthColor)
                                 }
                                 
@@ -2116,7 +2116,7 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Profil Pemilik",
+                            text = "Profil Kamu",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -2126,10 +2126,10 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                     OutlinedTextField(
                         value = ownerNameInput,
                         onValueChange = { ownerNameInput = it },
-                        label = { Text("Nama Pemilik Garasi") },
+                        label = { Text("Nama Pemilik") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        placeholder = { Text("Masukkan nama Anda...") }
+                        placeholder = { Text("Masukkan nama kamu...") }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
@@ -2162,7 +2162,7 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Tampilan & Tema",
+                            text = "Pilih Tema Warna",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -2257,7 +2257,7 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Notifikasi & Pengingat",
+                            text = "Atur Notifikasi",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -2276,7 +2276,7 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Dapatkan pemberitahuan otomatis jika kendaraan memerlukan servis.",
+                                text = "Ingatkan otomatis kalau kendaraan kamu udah waktunya servis.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -2309,7 +2309,7 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Kirim notifikasi tes untuk memastikan sistem notifikasi bekerja.",
+                                text = "Coba kirim notifikasi tes untuk memastikan notifikasi di HP kamu aktif.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -2317,13 +2317,13 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                         OutlinedButton(
                             onClick = { 
                                 viewModel.triggerOneTimeReminderCheck(context)
-                                android.widget.Toast.makeText(context, "Notifikasi uji coba dikirim!", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, "Notifikasi tes dikirim!", android.widget.Toast.LENGTH_SHORT).show()
                             },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Tes")
+                            Text("Tes Sekarang")
                         }
                     }
                 }
@@ -2347,7 +2347,7 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                             tint = MaterialTheme.colorScheme.error
                         )
                         Text(
-                            text = "Zona Bahaya",
+                            text = "Hapus Semua Data",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.error
@@ -2355,7 +2355,7 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Menghapus semua data kendaraan, konfigurasi servis, dan riwayat servis secara permanen. Aksi ini tidak dapat dibatalkan.",
+                        text = "Menghapus seluruh data kendaraan dan riwayat servis. Aksi ini gak bisa dibatalin ya!",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
@@ -2409,7 +2409,7 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Aplikasi pintar untuk melacak riwayat perawatan, memantau odometer, dan menjaga kesehatan armada kendaraan Anda.",
+                        text = "Aplikasi simpel untuk mencatat riwayat servis, pantau kilometer, dan menjaga kendaraan kamu tetap awet.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -2431,18 +2431,18 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                    Text("Konfirmasi Hapus Data")
+                    Text("Yakin mau hapus data?")
                 }
             },
             text = {
-                Text("Apakah Anda benar-benar yakin ingin menghapus semua data kendaraan beserta riwayat servis? Tindakan ini bersifat permanen.")
+                Text("Kamu beneran yakin mau menghapus semua data kendaraan dan riwayat servis? Data yang terhapus gak bisa dikembalikan lagi.")
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.nukeDatabase()
                         showNukeDialog = false
-                        android.widget.Toast.makeText(context, "Semua data berhasil dibersihkan!", android.widget.Toast.LENGTH_LONG).show()
+                        android.widget.Toast.makeText(context, "Semua data udah dihapus bersih!", android.widget.Toast.LENGTH_LONG).show()
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -2451,7 +2451,7 @@ fun SettingsScreen(navController: NavController, viewModel: MainViewModel) {
             },
             dismissButton = {
                 TextButton(onClick = { showNukeDialog = false }) {
-                    Text("Batal")
+                    Text("Gak Jadi")
                 }
             }
         )
