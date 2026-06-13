@@ -1,0 +1,11 @@
+Servis Reminder is a sleek, modern Android application built to help you track the service history and overall maintenance health of your vehicles. Designed with a gorgeous Bento Grid layout, the app offers an intuitive and responsive interface that makes vehicle tracking pleasant and organized.
+
+Features:
+- Dynamic Bento Grid UI: An elegant dashboard that organizes vehicle statistics, tax reminders, odometer readings, and expenses into interactive bento blocks.
+- Vehicle Health Index: Automatically calculates the health status (0% to 100%) of each vehicle based on active service reminders and odometer counts.
+- Engine-Specific Templates: Auto-configures maintenance templates tailored specifically to your vehicle's engine type—whether it's an ICE (Petrol/Diesel), Hybrid, Manual/Automatic Motorbike, or Electric Vehicle (EV).
+- Smart Input Forms: Automatically shows or hides relevant input fields based on the selected vehicle type (e.g., hiding oil changes for EVs).
+- Registration Tax (STNK) Counter: Monitors tax expiration dates and alerts you with color-coded warnings when the payment date approaches.
+- Notifications & Sharing: Daily background checks alert you when services are due or tax dates are close. Easily share complete service histories in clean text format to messaging apps.
+- Dark & Light Themes: Switch theme modes instantly in settings without restarting the application.
+- Secure Local DB: Powered by Room SQLite with cascade rules to protect data relational integrity.

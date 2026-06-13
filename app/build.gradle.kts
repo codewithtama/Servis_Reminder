@@ -28,11 +28,14 @@ android {
       keyAlias = "upload"
       keyPassword = System.getenv("KEY_PASSWORD")
     }
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+    val keystoreFile = file("${rootDir}/debug.keystore")
+    if (keystoreFile.exists()) {
+      create("debugConfig") {
+        storeFile = keystoreFile
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
   }
 
@@ -41,10 +44,21 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("debugConfig")
+      val keystoreFile = file("${rootDir}/debug.keystore")
+      if (keystoreFile.exists() && signingConfigs.findByName("debugConfig") != null) {
+        signingConfig = signingConfigs.getByName("debugConfig")
+      } else {
+        signingConfig = null
+      }
     }
     debug {
-      signingConfig = signingConfigs.getByName("debugConfig")
+      val keystoreFile = file("${rootDir}/debug.keystore")
+      if (keystoreFile.exists() && signingConfigs.findByName("debugConfig") != null) {
+        signingConfig = signingConfigs.getByName("debugConfig")
+      } else {
+        // Fall back to default Android debug signing config
+        signingConfig = signingConfigs.getByName("debug")
+      }
     }
   }
   compileOptions {

@@ -1,0 +1,35 @@
+Categories:
+  - Utilities
+License: GPL-3.0-only
+SourceCode: https://github.com/codewithtama/Servis_Reminder
+IssueTracker: https://github.com/codewithtama/Servis_Reminder/issues
+
+Summary: Vehicle service history and tax reminder tracker with Bento Grid UI
+Description: |-
+  Servis Reminder is a clean, modern Android application that helps you track your vehicle's service history, calculate maintenance health, and manage registration tax reminders using a beautiful Bento Grid layout.
+
+  Features:
+  - Custom templates tailored to different engine types (ICE, Hybrid, EV).
+  - Dynamic vehicle health index calculations (0% to 100%).
+  - Registration tax (STNK) countdown and warnings.
+  - Dark mode and light mode support with instant switching.
+  - Local SQLite (Room) database with cascades for data integrity.
+
+AllowedApksFilter: ''
+AutoName: Servis Reminder
+
+RepoType: git
+Repo: https://github.com/codewithtama/Servis_Reminder.git
+
+Builds:
+  - versionName: '1.0'
+    versionCode: 1
+    commit: v1.0.0
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version %v
+UpdateCheckMode: Tags
+CurrentVersion: '1.0'
+CurrentVersionCode: 1
